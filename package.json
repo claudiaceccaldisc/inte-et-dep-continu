@@ -1,6 +1,6 @@
 {
   "name": "claudia-ynov-react-form",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "private": false,
   "main": "dist/library.js",
   "homepage": ".",
