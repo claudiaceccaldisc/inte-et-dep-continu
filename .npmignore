@@ -1,0 +1,11 @@
+src
+cypress
+__tests__
+coverage
+.github
+node_modules
+public
+*.log
+.env
+.gitignore
+README.md
