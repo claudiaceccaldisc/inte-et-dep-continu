@@ -1,0 +1,76 @@
+{
+  "users": [
+    {
+      "firstName": "Claudia",
+      "lastName": "Ceccaldi",
+      "email": "admin@com.fr",
+      "birthDate": "1993-07-19",
+      "city": "agen",
+      "postalCode": "47000",
+      "id": 1
+    },
+    {
+      "firstName": "Claudia2",
+      "lastName": "Ceccaldi",
+      "email": "admin@com.fr",
+      "birthDate": "1993-07-19",
+      "city": "agen",
+      "postalCode": "47000",
+      "id": 2
+    },
+    {
+      "firstName": "Claudia2",
+      "lastName": "Ceccaldi",
+      "email": "admin@com.fr",
+      "birthDate": "1993-07-19",
+      "city": "agen",
+      "postalCode": "47000",
+      "id": 3
+    },
+    {
+      "firstName": "Claudia2",
+      "lastName": "Ceccaldi",
+      "email": "admin@com.fr",
+      "birthDate": "1993-07-19",
+      "city": "agen",
+      "postalCode": "47000",
+      "id": 4
+    },
+    {
+      "firstName": "Claudia",
+      "lastName": "Ceccaldi",
+      "email": "admin@com.fr",
+      "birthDate": "1993-07-19",
+      "city": "agen",
+      "postalCode": "47000",
+      "id": 5
+    },
+    {
+      "firstName": "Claudia2",
+      "lastName": "Ceccaldi",
+      "email": "admin@com.fr",
+      "birthDate": "1993-07-19",
+      "city": "agen",
+      "postalCode": "47000",
+      "id": 6
+    },
+    {
+      "firstName": "Claudia2",
+      "lastName": "Ceccaldi",
+      "email": "admin@com.fr",
+      "birthDate": "1993-07-19",
+      "city": "agen",
+      "postalCode": "47000",
+      "id": 7
+    },
+    {
+      "firstName": "Claudia",
+      "lastName": "Ceccaldi",
+      "email": "admin@com.fr",
+      "birthDate": "1993-07-19",
+      "city": "agen",
+      "postalCode": "47000",
+      "id": 8
+    }
+  ]
+}
