@@ -7,5 +7,5 @@ node_modules
 public
 *.log
 .env
-.gitignore
-README.md
+setupTests.js
+dist/__tests__
