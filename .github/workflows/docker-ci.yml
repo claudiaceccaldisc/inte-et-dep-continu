@@ -1,0 +1,73 @@
+name: Docker Integration Test
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+
+  docker-test:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Build MySQL image
+        run: docker build -t ynov-mysql ./docker-mysql
+
+      - name: Build API image
+        run: docker build -t ynov-api ./api
+
+      - name: Create docker network
+        run: docker network create ynov-network
+
+      - name: Run MySQL container
+        run: |
+          docker run -d \
+          --network ynov-network \
+          -e MYSQL_ROOT_PASSWORD=root \
+          -e MYSQL_DATABASE=ynov_ci \
+          --name mysql \
+          ynov-mysql
+
+      - name: Wait MySQL
+        run: sleep 20
+
+      - name: Run API container
+        run: |
+          docker run -d \
+          --network ynov-network \
+          -p 8000:8000 \
+          -e MYSQL_HOST=mysql \
+          -e MYSQL_USER=root \
+          -e MYSQL_ROOT_PASSWORD=root \
+          -e MYSQL_DATABASE=ynov_ci \
+          --name api \
+          ynov-api
+
+      - name: Wait API
+        run: sleep 10
+
+      - name: Test API endpoint
+        run: |
+          RESPONSE=$(curl -s http://localhost:8000/users)
+
+          echo "$RESPONSE"
+
+          echo "$RESPONSE" | grep utilisateurs
+
+          if echo "$RESPONSE" | grep -q "\[\]"; then
+            echo "Liste utilisateurs vide"
+            exit 1
+          fi
+
+      - name: Login to Docker Hub
+        run: echo "${{ secrets.DOCKER_TOKEN }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+      - name: Push API image
+        run: |
+          docker tag ynov-api ${{ secrets.DOCKER_USERNAME }}/ynov-api:latest
+          docker push ${{ secrets.DOCKER_USERNAME }}/ynov-api:latest
