@@ -1,23 +1,35 @@
-import { Routes, Route } from "react-router-dom";
-import { useState } from "react";
-import Home from "./pages/Home";
-import RegisterPage from "./pages/RegisterPage";
+import axios from 'axios';
+import { useState, useEffect } from 'react';
 
 function App() {
-  const [users, setUsers] = useState([]);
 
-  const addUser = (user) => {
-    setUsers((prev) => [...prev, user]);
-  };
+  const port = process.env.REACT_APP_SERVER_PORT || 8000;
+  const [usersCount, setUsersCount] = useState(0);
+
+  useEffect(() => {
+    async function countUsers() {
+      try {
+        const api = axios.create({
+          baseURL: `http://localhost:${port}`
+        });
+
+        const response = await api.get('/users');
+
+        setUsersCount(response.data.utilisateurs.length);
+
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    countUsers();
+  }, [port]);
 
   return (
-    <Routes>
-      <Route path="/" element={<Home users={users} />} />
-      <Route
-        path="/register"
-        element={<RegisterPage addUser={addUser} />}
-      />
-    </Routes>
+    <div className="App">
+      <h1>Users manager</h1>
+      <p>{usersCount} user(s) already registered</p>
+    </div>
   );
 }
 

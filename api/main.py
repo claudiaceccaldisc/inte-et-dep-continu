@@ -1,5 +1,6 @@
 import mysql.connector
 import os
+import time
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
@@ -8,30 +9,49 @@ load_dotenv()
 
 app = FastAPI()
 
-origins = ["*"]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-conn = mysql.connector.connect(
-    database=os.getenv("MYSQL_DATABASE"),
-    user=os.getenv("MYSQL_USER"),
-    password=os.getenv("MYSQL_ROOT_PASSWORD"),
-    port=3306,
-    host=os.getenv("MYSQL_HOST")
-)
+def get_connection():
+    for i in range(10): 
+        try:
+            conn = mysql.connector.connect(
+                host="db", 
+                user="root",
+                password=os.getenv("MYSQL_ROOT_PASSWORD"),
+                database=os.getenv("MYSQL_DATABASE"),
+                port=3306
+            )
+            return conn
+        except Exception as e:
+            print(f" Tentative {i+1}/10 : MySQL pas prêt...")
+            time.sleep(2)
+    raise Exception("❌ Impossible de se connecter à MySQL")
+
+
+@app.get("/")
+def read_root():
+    return {"message": "API is running "}
+
 
 @app.get("/users")
-async def get_users():
-    cursor = conn.cursor()
-    sql_select_Query = "select * from utilisateur"
-    cursor.execute(sql_select_Query)
+def get_users():
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
 
-    records = cursor.fetchall()
+        cursor.execute("SELECT * FROM utilisateur")
+        users = cursor.fetchall()
 
-    return {"utilisateurs": records}
+        cursor.close()
+        conn.close()
+
+        return {"utilisateurs": users}
+
+    except Exception as e:
+        return {"error": str(e)}

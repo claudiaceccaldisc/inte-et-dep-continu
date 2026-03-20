@@ -1,13 +1,10 @@
-USE users;
-
+USE ynov_ci;
 CREATE TABLE IF NOT EXISTS utilisateur (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    nom VARCHAR(255),
-    email VARCHAR(255)
+    nom VARCHAR(100),
+    email VARCHAR(100)
 );
-
 INSERT INTO utilisateur (nom, email)
-VALUES
-('Alice', 'alice@test.com'),
-('Claudia', 'claudia@test.com'),
-('Bob', 'bob@test.com');
+VALUES ("Claudia", "claudia@test.com"),
+    ("Kira", "kira@test.com"),
+    ("Clow", "clow@test.com");

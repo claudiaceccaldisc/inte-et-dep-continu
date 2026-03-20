@@ -2,6 +2,8 @@ services:
 
   db:
     image: mysql:8
+    volumes:
+      - ./docker-mysql/sqlfiles:/docker-entrypoint-initdb.d
     container_name: mysql_db
     restart: always
     environment:
@@ -24,7 +26,6 @@ services:
     restart: always
     ports:
       - "8080:8080"
-
     depends_on:
       db:
         condition: service_healthy
@@ -33,13 +34,21 @@ services:
     build: ./api
     ports:
       - "8000:8000"
-
     environment:
-      MYSQL_HOST: db
-      MYSQL_USER: root
-      MYSQL_DATABASE: users
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-
+      MYSQL_DATABASE: users
+      MYSQL_HOST: db   # 🔥 IMPORTANT
     depends_on:
       db:
         condition: service_healthy
+
+  frontend:
+    build:
+      context: .
+      dockerfile: react.Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      REACT_APP_SERVER_PORT: ${REACT_APP_SERVER_PORT}
+    depends_on:
+      - api
