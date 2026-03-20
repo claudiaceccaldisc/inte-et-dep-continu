@@ -12,8 +12,6 @@ services:
     ports:
       - "3307:3306"
 
-    volumes:
-      - ./docker-mysql/sqlfiles:/docker-entrypoint-initdb.d
 
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
@@ -37,7 +35,7 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: users
-      MYSQL_HOST: db   # 🔥 IMPORTANT
+      MYSQL_HOST: db 
     depends_on:
       db:
         condition: service_healthy
