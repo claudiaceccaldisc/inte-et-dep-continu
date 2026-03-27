@@ -31,7 +31,7 @@ services:
 
   api:
     build: ./api
-    image: claudiaceccaldisc/inte-et-dep-api:latest
+    image: claudiaynov/inte-et-dep-api:latest
     restart: always
     ports:
       - "8000:8000"
@@ -54,7 +54,7 @@ services:
     build:
       context: .
       dockerfile: react.Dockerfile
-    image: claudiaceccaldisc/inte-et-dep-frontend:latest
+    image: claudiaynov/inte-et-dep-frontend:latest
     restart: always
     ports:
       - "3000:3000"
