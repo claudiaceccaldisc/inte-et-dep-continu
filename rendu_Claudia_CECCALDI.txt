@@ -1,5 +1,0 @@
-Repository GitHub :
-https://github.com/claudiaceccaldisc/inte-et-dep-continu
-
-Image Docker Hub :
-https://hub.docker.com/r/claudiaynov/ynov-api

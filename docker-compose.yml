@@ -1,27 +1,24 @@
-version: "3.9"
-
 services:
-
   db:
     image: mysql:8
     container_name: mysql_db
     restart: always
-
+    env_file:
+      - .env
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: users
-
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
     volumes:
+      - db_data:/var/lib/mysql
       - ./docker-mysql/sqlfiles:/docker-entrypoint-initdb.d
-
     ports:
       - "3307:3306"
-
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$${MYSQL_ROOT_PASSWORD} --silent || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 20s
 
   adminer:
     image: adminer
@@ -34,29 +31,38 @@ services:
 
   api:
     build: ./api
+    image: claudiaceccaldisc/inte-et-dep-api:latest
+    restart: always
     ports:
       - "8000:8000"
-
     environment:
       MYSQL_HOST: db
       MYSQL_USER: root
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: users
-
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
 
   frontend:
     build:
       context: .
       dockerfile: react.Dockerfile
-
+    image: claudiaceccaldisc/inte-et-dep-frontend:latest
+    restart: always
     ports:
       - "3000:3000"
-
     environment:
-      REACT_APP_SERVER_PORT: 8000
-
+      REACT_APP_SERVER_PORT: ${REACT_APP_SERVER_PORT}
     depends_on:
-      - api
+      api:
+        condition: service_healthy
+
+volumes:
+  db_data:
