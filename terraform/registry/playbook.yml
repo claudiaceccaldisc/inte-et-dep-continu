@@ -1,0 +1,100 @@
+---
+- name: Deploy secure Docker registry with Nginx and SSL
+  hosts: registry
+  become: true
+
+  vars:
+    project_dir: /opt/registry
+    auth_dir: "{{ project_dir }}/auth"
+    certs_dir: "{{ project_dir }}/certs"
+    nginx_dir: "{{ project_dir }}/nginx"
+    data_dir: "{{ project_dir }}/data"
+    registry_user: admin
+    registry_password: admin123
+    public_ip: "{{ hostvars[inventory_hostname]['ansible_host'] | default(inventory_hostname) }}"
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install required packages
+      apt:
+        name:
+          - docker.io
+          - docker-compose-v2
+          - apache2-utils
+          - openssl
+        state: present
+
+    - name: Ensure Docker is started and enabled
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Create project directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - "{{ project_dir }}"
+        - "{{ auth_dir }}"
+        - "{{ certs_dir }}"
+        - "{{ nginx_dir }}"
+        - "{{ data_dir }}"
+
+    - name: Generate htpasswd content
+      command: htpasswd -Bbn {{ registry_user }} {{ registry_password }}
+      register: htpasswd_output
+      changed_when: false
+
+    - name: Write htpasswd file
+      copy:
+        content: "{{ htpasswd_output.stdout }}"
+        dest: "{{ auth_dir }}/htpasswd"
+        mode: "0644"
+
+    - name: Remove old certificate files
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - "{{ certs_dir }}/registry.crt"
+        - "{{ certs_dir }}/registry.key"
+
+    - name: Generate self-signed SSL certificate with SAN
+      command: >
+        openssl req -x509 -nodes -days 365 -newkey rsa:2048
+        -keyout {{ certs_dir }}/registry.key
+        -out {{ certs_dir }}/registry.crt
+        -subj "/CN={{ public_ip }}"
+        -addext "subjectAltName = IP:{{ public_ip }}"
+
+    - name: Copy nginx configuration
+      copy:
+        src: nginx.conf
+        dest: "{{ nginx_dir }}/nginx.conf"
+        mode: "0644"
+
+    - name: Copy docker compose file
+      copy:
+        src: docker-compose.yml
+        dest: "{{ project_dir }}/docker-compose.yml"
+        mode: "0644"
+
+    - name: Stop existing stack
+      command: docker compose down --remove-orphans
+      args:
+        chdir: "{{ project_dir }}"
+      ignore_errors: true
+
+    - name: Remove old named containers
+      command: docker rm -f registry registry-ui registry-nginx
+      ignore_errors: true
+
+    - name: Start secure registry stack
+      command: docker compose up -d
+      args:
+        chdir: "{{ project_dir }}"
