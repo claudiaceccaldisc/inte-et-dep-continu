@@ -7,12 +7,21 @@ on:
       - arnaud-dev
 
 jobs:
-  test:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Test echo
-        run: echo "Pipeline déclenché avec succès"
+      - name: Step 1 - Build & Publish Docker
+        run: echo "Build et push des images Docker"
+
+      - name: Step 2 - Terraform Provisioning
+        run: echo "Provisioning infrastructure avec Terraform"
+
+      - name: Step 3 - Bridge Terraform -> Ansible
+        run: echo "Récupération IP et clé SSH depuis Terraform"
+
+      - name: Step 4 - Ansible Deployment
+        run: echo "Déploiement avec Ansible"
