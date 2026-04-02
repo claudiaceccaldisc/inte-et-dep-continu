@@ -1,1 +1,3 @@
-https://github.com/claudiaceccaldisc/inte-et-dep-continu
+Lien du repository GitHub : 
+IP publique du projet applicatif : 
+IP publique du registre Docker : 13.38.244.45
