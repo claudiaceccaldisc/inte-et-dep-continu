@@ -28,3 +28,6 @@ yarn-error.log*
 *.tfstate.*
 *.pem
 crash.log
+
+*.pub
+inventory.test.ini
