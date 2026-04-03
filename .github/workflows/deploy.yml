@@ -20,8 +20,10 @@ jobs:
       - name: Step 1 bis - Build Docker API
         run: docker build -t api-test ./api
 
-      - name: Step 2 - Terraform Provisioning
-        run: echo "Provisioning infrastructure avec Terraform"
+      - name: Step 2 - Terraform Init (prepare)
+        run: |
+          cd terraform/app
+          terraform init
 
       - name: Step 3 - Bridge Terraform -> Ansible
         run: echo "Récupération IP et clé SSH depuis Terraform"
