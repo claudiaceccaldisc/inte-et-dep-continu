@@ -26,7 +26,7 @@ provider "aws" {
 variable "unique_suffix_enabled" {
   description = "Active un suffixe aléatoire sur certains noms AWS"
   type        = bool
-  default     = false
+  default     = true
 }
 
 data "aws_ami" "ubuntu" {
