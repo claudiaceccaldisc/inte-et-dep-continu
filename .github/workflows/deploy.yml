@@ -78,3 +78,8 @@ jobs:
           cd ansible
           ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini playbook-app.yml \
           --extra-vars "registry_url=$PUBLIC_IP:443 registry_username=admin registry_token=admin123"
+
+      - name: Step 5.5 - Wait for SSH recovery
+        run: |
+          echo "Attente que le serveur redevienne accessible..."
+          sleep 60
