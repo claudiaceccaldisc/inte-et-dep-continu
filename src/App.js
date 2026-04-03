@@ -4,13 +4,14 @@ import { useState, useEffect } from 'react';
 function App() {
 
   const port = process.env.REACT_APP_SERVER_PORT || 8000;
+  const apiUrl = process.env.REACT_APP_API_URL || `http://localhost:${port}`;
   const [usersCount, setUsersCount] = useState(0);
 
   useEffect(() => {
     async function countUsers() {
       try {
         const api = axios.create({
-          baseURL: `http://35.180.205.228:${port}`
+          baseURL: apiUrl
         });
 
         const response = await api.get('/users');
@@ -23,7 +24,7 @@ function App() {
     }
 
     countUsers();
-  }, [port]);
+  }, [port, apiUrl]);
 
   return (
     <div className="App">
