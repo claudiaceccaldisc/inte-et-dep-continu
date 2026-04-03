@@ -73,13 +73,13 @@ jobs:
           echo "Test du registre..."
           curl -k https://$PUBLIC_IP:443/v2/ || true
 
+      - name: Step 4.7 - Wait before App deploy
+        run: |
+          echo "Attente avant déploiement app (stabilisation Docker/SSH)..."
+          sleep 60
+
       - name: Step 5 - Run Ansible Playbook (App)
         run: |
           cd ansible
           ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini playbook-app.yml \
           --extra-vars "registry_url=$PUBLIC_IP:443 registry_username=admin registry_token=admin123"
-
-      - name: Step 5.5 - Wait for SSH recovery
-        run: |
-          echo "Attente que le serveur redevienne accessible..."
-          sleep 60

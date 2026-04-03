@@ -142,7 +142,15 @@
         group: "{{ app_user }}"
         mode: "0600"
 
+#    - name: Copier le fichier d'environnement
+#      ansible.builtin.copy:
+#        src: app.env
+#        dest: "{{ project_dir }}/.env"
+#        owner: "{{ app_user }}"
+#        group: "{{ app_user }}"
+#        mode: "0600"
+
     - name: Démarrage de la stack
-      shell: docker compose up -d
+      command: docker compose up -d 
       args:
         chdir: "{{ project_dir }}"
