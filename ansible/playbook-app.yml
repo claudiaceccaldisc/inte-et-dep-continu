@@ -1,0 +1,156 @@
+---
+- name: Déploiement de la stack applicative
+  hosts: app_hosts
+  become: true
+  vars:
+    project_dir: /home/ubuntu/app-stack
+    app_user: ubuntu
+
+  tasks:
+    - name: Mise à jour du cache apt
+      ansible.builtin.apt:
+        update_cache: true
+
+    - name: Installation de Docker et dépendances
+      ansible.builtin.apt:
+        name:
+          - docker.io
+          - docker-compose-v2
+          - python3-docker
+        state: present
+
+    - name: Ajouter ubuntu au groupe docker
+      ansible.builtin.user:
+        name: "{{ app_user }}"
+        groups: docker
+        append: true
+
+    - name: Créer le dossier projet
+      ansible.builtin.file:
+        path: "{{ project_dir }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: "0755"
+      
+    - name: Écrire /etc/docker/daemon.json
+      copy:
+        dest: /etc/docker/daemon.json
+        content: "{{ {'insecure-registries': [registry_url]} | to_nice_json }}"
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+      become: true
+    
+    - name: Redémarrer le service Docker
+      ansible.builtin.service:
+        name: docker
+        state: restarted
+      become: true
+
+    - name: Authentification au registre privé
+      community.docker.docker_login:
+        registry_url: "https://{{ registry_url }}"
+        username: "{{ registry_username }}"
+        password: "{{ registry_token }}"
+        reauthorize: true
+
+    - name: Copier le fichier d'environnement 
+      ansible.builtin.copy:
+        src: ../.env
+        dest: "{{ project_dir }}/.env"
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: "0600"
+
+    - name: Copier le react.Dockerfile
+      ansible.builtin.copy:
+        src: ../react.Dockerfile
+        dest: "{{ project_dir }}/react.Dockerfile"
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: "0644"
+
+    - name: Copier le docker-compose-app.yml
+      ansible.builtin.copy:
+        src: ../docker-compose.yml
+        dest: "{{ project_dir }}/docker-compose.yml"
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: "0644"
+
+    - name: Création des dossiers
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+
+      loop:
+        - "{{ project_dir }}"
+        - "{{ project_dir }}/api"
+        - "{{ project_dir }}/docker-mysql"
+        - "{{ project_dir }}/src"
+        - "{{ project_dir }}/public"
+
+    - name: copie du dossier api
+      ansible.builtin.copy:
+        src: ../api/
+        dest: "{{ project_dir }}/api/"
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'   
+
+    - name: copie du dossier public
+      ansible.builtin.copy:
+        src: ../public/
+        dest: "{{ project_dir }}/public/"
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'   
+
+    - name: copie du dossier src
+      ansible.builtin.copy:
+        src: ../src/
+        dest: "{{ project_dir }}/src/"
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'   
+
+    - name: copie du dossier docker-mysql
+      ansible.builtin.copy:
+        src: ../docker-mysql/
+        dest: "{{ project_dir }}/docker-mysql/"
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'   
+
+    - name: Copier le package.json
+      ansible.builtin.copy:
+        src: ../package.json
+        dest: "{{ project_dir }}/package.json"
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: "0600"
+
+    - name: Copier le package-lock.json
+      ansible.builtin.copy:
+        src: ../package-lock.json
+        dest: "{{ project_dir }}/package-lock.json"
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: "0600"
+
+#    - name: Copier le fichier d'environnement
+#      ansible.builtin.copy:
+#        src: app.env
+#        dest: "{{ project_dir }}/.env"
+#        owner: "{{ app_user }}"
+#        group: "{{ app_user }}"
+#        mode: "0600"
+
+    - name: Démarrage de la stack
+      command: docker compose up -d 
+      args:
+        chdir: "{{ project_dir }}"

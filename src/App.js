@@ -10,7 +10,7 @@ function App() {
     async function countUsers() {
       try {
         const api = axios.create({
-          baseURL: `http://localhost:${port}`
+            baseURL: process.env.REACT_APP_API_URL
         });
 
         const response = await api.get('/users');
