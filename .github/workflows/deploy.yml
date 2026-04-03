@@ -49,6 +49,8 @@ jobs:
           echo "REACT_APP_API_URL=http://$PUBLIC_IP:8000" >> .env
           echo "MYSQL_DATABASE=users" >> .env
           echo "MYSQL_ROOT_PASSWORD=ynov-CICD" >> .env
+          echo "REGISTRY_USERNAME=${{ secrets.REGISTRY_USERNAME }}" >> .env
+          echo "REGISTRY_TOKEN=${{ secrets.REGISTRY_TOKEN }}" >> .env
 
       - name: Step 3.6 - Generate inventory.ini
         run: |
@@ -80,6 +82,9 @@ jobs:
 
       - name: Step 5 - Run Ansible Playbook (App)
         run: |
+          export $(grep REGISTRY_USERNAME .env)
+          export $(grep REGISTRY_TOKEN .env)
+
           cd ansible
           ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini playbook-app.yml \
-          --extra-vars "registry_url=$PUBLIC_IP:443 registry_username=admin registry_token=admin123"
+          --extra-vars "registry_url=$PUBLIC_IP:443 registry_username=$REGISTRY_USERNAME registry_token=$REGISTRY_TOKEN"
