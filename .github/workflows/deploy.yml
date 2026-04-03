@@ -58,4 +58,5 @@ jobs:
       - name: Step 4 - Run Ansible Playbook
         run: |
           cd ansible
-          ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini playbook-app.yml
+          ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini playbook-app.yml \
+          --extra-vars "registry_url=$PUBLIC_IP:443 registry_username=admin registry_token=admin123"
