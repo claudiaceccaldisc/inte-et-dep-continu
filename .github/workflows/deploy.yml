@@ -43,12 +43,12 @@ jobs:
           terraform output -raw private_key_pem > private_key.pem
           chmod 600 private_key.pem
 
-      - name: Step 3 bis - Wait and Test SSH
+      - name: Step 3 bis - Wait and Install Docker
         run: |
           echo "Attente que l'instance soit prête..."
           sleep 30
           cd terraform/app
-          ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@$PUBLIC_IP "sudo apt update"
+          ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@$PUBLIC_IP "sudo apt update && sudo apt install -y docker.io"
 
       - name: Step 4 - Ansible Deployment
         run: echo "Déploiement avec Ansible sur IP $PUBLIC_IP"
