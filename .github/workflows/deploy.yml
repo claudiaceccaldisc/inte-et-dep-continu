@@ -36,8 +36,11 @@ jobs:
           cd terraform/app
           terraform apply -auto-approve
 
-      - name: Step 3 - Bridge Terraform -> Ansible
-        run: echo "Récupération IP et clé SSH depuis Terraform"
+      - name: Step 3 - Get Public IP
+        id: terraform_output
+        run: |
+          cd terraform/app
+          echo "PUBLIC_IP=$(terraform output -raw public_ip)" >> $GITHUB_ENV
 
       - name: Step 4 - Ansible Deployment
-        run: echo "Déploiement avec Ansible"
+        run: echo "Déploiement avec Ansible sur IP $PUBLIC_IP"
