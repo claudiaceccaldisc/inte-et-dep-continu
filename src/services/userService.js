@@ -1,5 +1,7 @@
 export async function saveUser(user) {
-  const response = await fetch("http://localhost:4000/users", {
+  const apiUrl = process.env.REACT_APP_API_URL;
+
+  const response = await fetch(`${apiUrl}/users`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
