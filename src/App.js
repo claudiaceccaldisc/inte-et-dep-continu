@@ -1,29 +1,26 @@
-import axios from 'axios';
-import { useState, useEffect } from 'react';
+import axios from "axios";
+import { useState, useEffect } from "react";
 
 function App() {
-
-  const port = process.env.REACT_APP_SERVER_PORT || 8000;
+  const apiUrl = process.env.REACT_APP_API_URL;
   const [usersCount, setUsersCount] = useState(0);
 
   useEffect(() => {
     async function countUsers() {
       try {
         const api = axios.create({
-          baseURL: `http://localhost:${port}`
+          baseURL: apiUrl,
         });
 
-        const response = await api.get('/users');
-
+        const response = await api.get("/users");
         setUsersCount(response.data.utilisateurs.length);
-
       } catch (error) {
         console.error(error);
       }
     }
 
     countUsers();
-  }, [port]);
+  }, [apiUrl]);
 
   return (
     <div className="App">
