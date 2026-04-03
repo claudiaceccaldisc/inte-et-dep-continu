@@ -80,6 +80,12 @@ jobs:
           echo "Test du registre..."
           curl -k https://$PUBLIC_IP:443/v2/ || true
 
+      # 🔥 AJOUT (UNE SEULE MODIF)
+      - name: Configure Docker insecure registry (runner)
+        run: |
+          echo '{"insecure-registries": ["'"$PUBLIC_IP:443"'"]}' | sudo tee /etc/docker/daemon.json
+          sudo systemctl restart docker
+
       - name: Step 1 ter - Login + Tag + Push images (REGISTRY)
         run: |
           echo "${{ secrets.REGISTRY_TOKEN }}" | docker login $PUBLIC_IP:443 -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
