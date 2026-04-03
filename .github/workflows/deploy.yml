@@ -97,15 +97,29 @@ jobs:
           echo "Test du registre..."
           curl -k https://$PUBLIC_IP:443/v2/ || true
 
+      # Self-signed cert on the registry: Docker rejects it unless this host:port is listed here.
+      - name: Step 4.65 - Configure Docker for self-signed registry
+        run: |
+          sudo tee /etc/docker/daemon.json > /dev/null <<EOF
+          {
+            "insecure-registries": ["${PUBLIC_IP}:443"]
+          }
+          EOF
+          sudo systemctl restart docker
+          for i in $(seq 1 15); do
+            docker info >/dev/null 2>&1 && break
+            sleep 2
+          done
+
       - name: Step 1 ter - Login + Tag + Push images (REGISTRY)
         run: |
-          echo "${{ secrets.REGISTRY_TOKEN }}" | docker login http://$PUBLIC_IP:443 -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
+          echo "${{ secrets.REGISTRY_TOKEN }}" | docker login "${PUBLIC_IP}:443" -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
 
-          docker tag frontend-test http://$PUBLIC_IP:443/claudiaynov/inte-et-dep-frontend:latest
-          docker tag api-test http://$PUBLIC_IP:443/claudiaynov/inte-et-dep-api:latest
+          docker tag frontend-test "${PUBLIC_IP}:443/claudiaynov/inte-et-dep-frontend:latest"
+          docker tag api-test "${PUBLIC_IP}:443/claudiaynov/inte-et-dep-api:latest"
 
-          docker push http://$PUBLIC_IP:443/claudiaynov/inte-et-dep-frontend:latest
-          docker push http://$PUBLIC_IP:443/claudiaynov/inte-et-dep-api:latest
+          docker push "${PUBLIC_IP}:443/claudiaynov/inte-et-dep-frontend:latest"
+          docker push "${PUBLIC_IP}:443/claudiaynov/inte-et-dep-api:latest"
 
       - name: Step 4.7 - Wait before App deploy
         run: |
