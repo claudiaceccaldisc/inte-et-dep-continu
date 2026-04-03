@@ -54,6 +54,7 @@ jobs:
           echo "REACT_APP_API_URL=http://$PUBLIC_IP:8000" >> .env
           echo "MYSQL_DATABASE=users" >> .env
           echo "MYSQL_ROOT_PASSWORD=ynov-CICD" >> .env
+          echo "REGISTRY_URL=$PUBLIC_IP:443" >> .env
           echo "REGISTRY_USERNAME=${{ secrets.REGISTRY_USERNAME }}" >> .env
           echo "REGISTRY_TOKEN=${{ secrets.REGISTRY_TOKEN }}" >> .env
 
@@ -79,6 +80,16 @@ jobs:
         run: |
           echo "Test du registre..."
           curl -k https://$PUBLIC_IP:443/v2/ || true
+
+      - name: Step 1 ter - Login + Tag + Push images (REGISTRY)
+        run: |
+          echo "${{ secrets.REGISTRY_TOKEN }}" | docker login $PUBLIC_IP:443 -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin || true
+
+          docker tag frontend-test $PUBLIC_IP:443/claudiaynov/inte-et-dep-frontend:latest || true
+          docker tag api-test $PUBLIC_IP:443/claudiaynov/inte-et-dep-api:latest || true
+
+          docker push $PUBLIC_IP:443/claudiaynov/inte-et-dep-frontend:latest || true
+          docker push $PUBLIC_IP:443/claudiaynov/inte-et-dep-api:latest || true
 
       - name: Step 4.7 - Wait before App deploy
         run: |
