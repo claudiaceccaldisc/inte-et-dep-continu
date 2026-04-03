@@ -53,7 +53,7 @@ jobs:
 
           scp -o StrictHostKeyChecking=no -i private_key.pem -r ../../* ubuntu@$PUBLIC_IP:/home/ubuntu/app
 
-          ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@$PUBLIC_IP "cd /home/ubuntu/app && sudo docker compose up -d"
+          ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@$PUBLIC_IP "cd /home/ubuntu/app && sudo docker-compose up -d"
 
       - name: Step 4 - Ansible Deployment
         run: echo "Déploiement avec Ansible sur IP $PUBLIC_IP"
