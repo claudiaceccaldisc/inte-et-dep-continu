@@ -31,3 +31,7 @@ crash.log
 
 *.pub
 inventory.test.ini
+
+terraform/app/key.pem
+terraform/app/inventory.ini
+terraform/app/app-key-terraform.pem
