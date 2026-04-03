@@ -1,37 +1,55 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
-/node_modules
-/.pnp
+# Dependencies
+node_modules/
+.pnp/
 .pnp.js
 
-# testing
-/coverage
+# Build / test outputs
+build/
+dist/
+coverage/
 
-# production
-/build
-
-# misc
+# Environment files
 .env
-.DS_Store
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 
+# Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-.terraform/
+# OS / editor
+.DS_Store
+Thumbs.db
+
+# Terraform generated folders and state
+**/.terraform/
 *.tfstate
 *.tfstate.*
-*.pem
 crash.log
 
-*.pub
-inventory.test.ini
+# Generated inventories
+**/inventory.ini
+**/inventory.test.ini
+**/inventory*.ini
 
+# Generated keys / secrets
+*.pem
+*.pub
+key.pem
+
+# Local generated Terraform files
+terraform/app/app-key-terraform.pem
 terraform/app/key.pem
 terraform/app/inventory.ini
-terraform/app/app-key-terraform.pem
+terraform/app/inventory.test.ini
+terraform/app/terraform.tfstate
+terraform/app/terraform.tfstate.backup
+
+terraform/registry/inventory.ini
+terraform/registry/registry-key-terraform.pem
+terraform/registry/registry-key-terraform.pub
+terraform/registry/terraform.tfstate
+terraform/registry/terraform.tfstate.backup
