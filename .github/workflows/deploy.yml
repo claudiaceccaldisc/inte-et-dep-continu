@@ -36,11 +36,12 @@ jobs:
           cd terraform/app
           terraform apply -auto-approve
 
-      - name: Step 3 - Get Public IP
-        id: terraform_output
+      - name: Step 3 - Get IP and SSH Key
         run: |
           cd terraform/app
           echo "PUBLIC_IP=$(terraform output -raw public_ip)" >> $GITHUB_ENV
+          terraform output -raw private_key_pem > private_key.pem
+          chmod 600 private_key.pem
 
       - name: Step 4 - Ansible Deployment
         run: echo "Déploiement avec Ansible sur IP $PUBLIC_IP"
