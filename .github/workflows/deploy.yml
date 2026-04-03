@@ -20,7 +20,10 @@ jobs:
       - name: Step 1 bis - Build Docker API
         run: docker build -t api-test ./api
 
-      - name: Step 2 - Terraform Init (prepare)
+      - name: Step 2 - Install Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Step 2 bis - Terraform Init
         run: |
           cd terraform/app
           terraform init
