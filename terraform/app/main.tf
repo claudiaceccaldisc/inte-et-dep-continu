@@ -12,10 +12,6 @@ terraform {
       source  = "hashicorp/local"
       version = "~> 2.0"
     }
-    random = {
-      source  = "hashicorp/random"
-      version = "~> 3.0"
-    }
   }
 }
 
@@ -33,14 +29,13 @@ data "aws_ami" "ubuntu" {
   }
 }
 
-# ajout d'un suffixe aléatoire pour éviter les doublons AWS
-resource "random_id" "suffix" {
-  byte_length = 4
-}
-
 resource "tls_private_key" "pk" {
   algorithm = "RSA"
   rsa_bits  = 4096
+}
+
+resource "random_id" "suffix" {
+  byte_length = 4
 }
 
 resource "aws_key_pair" "generated_key" {
@@ -92,7 +87,7 @@ resource "aws_security_group" "app_sg" {
 
 resource "aws_instance" "app_server" {
   ami                         = data.aws_ami.ubuntu.id
-  instance_type               = "t3.small"
+  instance_type               = "t3.micro"
   key_name                    = aws_key_pair.generated_key.key_name
   associate_public_ip_address = true
   vpc_security_group_ids      = [aws_security_group.app_sg.id]
