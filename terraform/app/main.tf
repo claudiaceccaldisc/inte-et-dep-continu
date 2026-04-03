@@ -12,6 +12,10 @@ terraform {
       source  = "hashicorp/local"
       version = "~> 2.0"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
+    }
   }
 }
 
@@ -29,13 +33,18 @@ data "aws_ami" "ubuntu" {
   }
 }
 
+# ajout d'un suffixe aléatoire pour éviter les doublons AWS
+resource "random_id" "suffix" {
+  byte_length = 4
+}
+
 resource "tls_private_key" "pk" {
   algorithm = "RSA"
   rsa_bits  = 4096
 }
 
 resource "aws_key_pair" "generated_key" {
-  key_name   = "app-key-terraform-claudia"
+  key_name   = "app-key-${random_id.suffix.hex}"
   public_key = tls_private_key.pk.public_key_openssh
 }
 
@@ -46,7 +55,7 @@ resource "local_file" "ssh_key" {
 }
 
 resource "aws_security_group" "app_sg" {
-  name        = "app-sg-claudia"
+  name        = "app-sg-${random_id.suffix.hex}"
   description = "Allow SSH and app access"
 
   ingress {
