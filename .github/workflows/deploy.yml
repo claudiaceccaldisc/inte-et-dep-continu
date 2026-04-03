@@ -80,6 +80,17 @@ jobs:
           echo "Test du registre..."
           curl -k https://$PUBLIC_IP:443/v2/ || true
 
+      # 🔥 STEP DÉPLACÉ ICI (aucun changement dedans)
+      - name: Step 1 ter - Login + Tag + Push images (REGISTRY)
+        run: |
+          echo "${{ secrets.REGISTRY_TOKEN }}" | docker login https://$PUBLIC_IP:443 -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
+
+          docker tag frontend-test $PUBLIC_IP:443/claudiaynov/inte-et-dep-frontend:latest
+          docker tag api-test $PUBLIC_IP:443/claudiaynov/inte-et-dep-api:latest
+
+          docker push $PUBLIC_IP:443/claudiaynov/inte-et-dep-frontend:latest
+          docker push $PUBLIC_IP:443/claudiaynov/inte-et-dep-api:latest
+
       - name: Step 4.7 - Wait before App deploy
         run: |
           echo "Attente avant déploiement app (stabilisation Docker/SSH)..."

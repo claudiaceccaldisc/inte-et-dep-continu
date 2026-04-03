@@ -30,8 +30,7 @@ services:
         condition: service_healthy
 
   api:
-    build: ./api
-    image: claudiaynov/inte-et-dep-api:latest
+    image: ${REGISTRY_URL}/claudiaynov/inte-et-dep-api:latest
     restart: always
     ports:
       - "8000:8000"
@@ -51,17 +50,13 @@ services:
       start_period: 20s
 
   frontend:
-    build:
-      context: .
-      dockerfile: react.Dockerfile
-    image: claudiaynov/inte-et-dep-frontend:latest
+    image: ${REGISTRY_URL}/claudiaynov/inte-et-dep-frontend:latest
     restart: always
     ports:
       - "3000:3000"
     environment:
       REACT_APP_SERVER_PORT: ${REACT_APP_SERVER_PORT}
       REACT_APP_API_URL: ${REACT_APP_API_URL}
-
     depends_on:
       api:
         condition: service_healthy
