@@ -56,6 +56,7 @@ jobs:
           echo "MYSQL_ROOT_PASSWORD=ynov-CICD" >> .env
           echo "REGISTRY_USERNAME=${{ secrets.REGISTRY_USERNAME }}" >> .env
           echo "REGISTRY_TOKEN=${{ secrets.REGISTRY_TOKEN }}" >> .env
+          echo "REGISTRY_URL=$PUBLIC_IP:443" >> .env
 
       - name: Step 3.6 - Generate inventory.ini
         run: |
@@ -80,7 +81,6 @@ jobs:
           echo "Test du registre..."
           curl -k https://$PUBLIC_IP:443/v2/ || true
 
-      # 🔥 AJOUT (UNE SEULE MODIF)
       - name: Configure Docker insecure registry (runner)
         run: |
           echo '{"insecure-registries": ["'"$PUBLIC_IP:443"'"]}' | sudo tee /etc/docker/daemon.json
