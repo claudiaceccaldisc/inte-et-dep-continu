@@ -43,5 +43,10 @@ jobs:
           terraform output -raw private_key_pem > private_key.pem
           chmod 600 private_key.pem
 
+      - name: Step 3 bis - Test SSH
+        run: |
+          cd terraform/app
+          ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@$PUBLIC_IP "echo SSH OK"
+
       - name: Step 4 - Ansible Deployment
         run: echo "Déploiement avec Ansible sur IP $PUBLIC_IP"
