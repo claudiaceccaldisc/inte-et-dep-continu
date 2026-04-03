@@ -10,7 +10,7 @@ function App() {
     async function countUsers() {
       try {
         const api = axios.create({
-          baseURL: `http://localhost:${port}`
+          baseURL: `http://35.180.205.228:${port}`
         });
 
         const response = await api.get('/users');
