@@ -43,6 +43,11 @@ jobs:
           terraform output -raw private_key_pem > private_key.pem
           chmod 600 private_key.pem
 
+      - name: Step 3.2 - Wait for SSH (IMPORTANT)
+        run: |
+          echo "Attente que SSH soit prêt..."
+          sleep 60
+
       - name: Step 3.5 - Generate .env file
         run: |
           echo "REACT_APP_SERVER_PORT=8000" >> .env

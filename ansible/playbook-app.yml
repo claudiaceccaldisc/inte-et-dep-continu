@@ -151,8 +151,6 @@
 #        mode: "0600"
 
     - name: Démarrage de la stack
-      command: docker compose up -d
+      command: docker compose up -d 
       args:
         chdir: "{{ project_dir }}"
-      async: 300
-      poll: 0
