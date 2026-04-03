@@ -51,7 +51,7 @@ jobs:
 
           ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@$PUBLIC_IP "sudo apt update && sudo apt install -y docker.io docker-compose && mkdir -p /home/ubuntu/app"
 
-          scp -o StrictHostKeyChecking=no -i private_key.pem -r ../../* ubuntu@$PUBLIC_IP:/home/ubuntu/app
+          scp -o StrictHostKeyChecking=no -i private_key.pem -r ../../. ubuntu@$PUBLIC_IP:/home/ubuntu/app
 
           ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@$PUBLIC_IP "cd /home/ubuntu/app && sudo docker-compose up -d"
 
