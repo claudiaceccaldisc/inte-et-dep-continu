@@ -45,8 +45,24 @@ jobs:
 
       - name: Step 3.2 - Wait for SSH (IMPORTANT)
         run: |
-          echo "Attente que SSH soit prêt..."
-          sleep 60
+          KEY="${GITHUB_WORKSPACE}/terraform/app/private_key.pem"
+          echo "Waiting for SSH on ubuntu@${PUBLIC_IP} (up to ~12 min)..."
+          for i in $(seq 1 48); do
+            if ssh -i "$KEY" \
+              -o StrictHostKeyChecking=no \
+              -o UserKnownHostsFile=/dev/null \
+              -o ConnectTimeout=15 \
+              -o BatchMode=yes \
+              ubuntu@"${PUBLIC_IP}" \
+              "echo ssh_ok" 2>/dev/null; then
+              echo "SSH is ready."
+              exit 0
+            fi
+            echo "Attempt ${i}/48: SSH not ready yet, sleeping 15s..."
+            sleep 15
+          done
+          echo "Timed out waiting for SSH on ${PUBLIC_IP}:22"
+          exit 1
 
       - name: Step 3.5 - Generate .env file
         run: |
