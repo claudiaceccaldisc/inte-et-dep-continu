@@ -52,7 +52,10 @@ jobs:
 
       - name: Step 3.6 - Generate inventory.ini
         run: |
-          echo "[app_hosts]" > ansible/inventory.ini
+          echo "[registry_hosts]" > ansible/inventory.ini
+          echo "$PUBLIC_IP ansible_user=ubuntu ansible_ssh_private_key_file=../terraform/app/private_key.pem" >> ansible/inventory.ini
+          echo "" >> ansible/inventory.ini
+          echo "[app_hosts]" >> ansible/inventory.ini
           echo "$PUBLIC_IP ansible_user=ubuntu ansible_ssh_private_key_file=../terraform/app/private_key.pem" >> ansible/inventory.ini
 
       - name: Step 4 - Deploy Registry
