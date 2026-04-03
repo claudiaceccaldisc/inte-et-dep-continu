@@ -43,13 +43,17 @@ jobs:
           terraform output -raw private_key_pem > private_key.pem
           chmod 600 private_key.pem
 
-      
       - name: Step 3.5 - Generate .env file
         run: |
           echo "REACT_APP_SERVER_PORT=8000" >> .env
           echo "REACT_APP_API_URL=http://$PUBLIC_IP:8000" >> .env
           echo "MYSQL_DATABASE=users" >> .env
           echo "MYSQL_ROOT_PASSWORD=ynov-CICD" >> .env
+
+      - name: Step 3.6 - Generate inventory.ini
+        run: |
+          echo "[app_hosts]" > ansible/inventory.ini
+          echo "$PUBLIC_IP ansible_user=ubuntu ansible_ssh_private_key_file=../terraform/app/private_key.pem" >> ansible/inventory.ini
 
       - name: Step 4 - Run Ansible Playbook
         run: |
