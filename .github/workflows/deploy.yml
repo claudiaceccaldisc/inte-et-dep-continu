@@ -63,6 +63,16 @@ jobs:
           cd ansible
           ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini playbook.yml
 
+      - name: Step 4.5 - Wait for Registry
+        run: |
+          echo "Attente du démarrage du registre..."
+          sleep 30
+
+      - name: Step 4.6 - Test Registry
+        run: |
+          echo "Test du registre..."
+          curl -k https://$PUBLIC_IP:443/v2/ || true
+
       - name: Step 5 - Run Ansible Playbook (App)
         run: |
           cd ansible
