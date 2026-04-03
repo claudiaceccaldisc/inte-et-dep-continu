@@ -17,6 +17,9 @@ jobs:
       - name: Step 1 - Build Docker Frontend
         run: docker build -t frontend-test -f react.Dockerfile .
 
+      - name: Step 1 bis - Build Docker API
+        run: docker build -t api-test ./api
+
       - name: Step 2 - Terraform Provisioning
         run: echo "Provisioning infrastructure avec Terraform"
 
