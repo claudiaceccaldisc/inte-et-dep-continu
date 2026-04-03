@@ -65,7 +65,7 @@ resource "local_file" "ssh_key" {
 
 resource "aws_security_group" "app_sg" {
   name        = "app-sg-claudia${local.suffixe_nom}"
-  description = "Autorise SSH et les accès applicatifs"
+  description = "Allow SSH and application access"
 
   ingress {
     description = "SSH"
