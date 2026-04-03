@@ -12,11 +12,23 @@ terraform {
       source  = "hashicorp/local"
       version = "~> 2.0"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
+    }
   }
 }
 
 provider "aws" {
   region = "eu-west-3"
+}
+
+# Active un suffixe aléatoire pour éviter les doublons
+# dans les déploiements éphémères / pipeline.
+variable "unique_suffix_enabled" {
+  description = "Active un suffixe aléatoire sur certains noms AWS"
+  type        = bool
+  default     = false
 }
 
 data "aws_ami" "ubuntu" {
@@ -29,13 +41,21 @@ data "aws_ami" "ubuntu" {
   }
 }
 
+resource "random_id" "suffix" {
+  byte_length = 2
+}
+
+locals {
+  suffixe_nom = var.unique_suffix_enabled ? "-${random_id.suffix.hex}" : ""
+}
+
 resource "tls_private_key" "pk" {
   algorithm = "RSA"
   rsa_bits  = 4096
 }
 
 resource "aws_key_pair" "generated_key" {
-  key_name   = "app-key-terraform-claudia"
+  key_name   = "app-key-terraform-claudia${local.suffixe_nom}"
   public_key = tls_private_key.pk.public_key_openssh
 }
 
@@ -46,8 +66,8 @@ resource "local_file" "ssh_key" {
 }
 
 resource "aws_security_group" "app_sg" {
-  name        = "app-sg-claudia"
-  description = "Allow SSH and app access"
+  name        = "app-sg-claudia${local.suffixe_nom}"
+  description = "Autorise SSH et les accès applicatifs"
 
   ingress {
     description = "SSH"
@@ -86,7 +106,8 @@ resource "aws_instance" "app_server" {
   instance_type               = "t3.small"
   key_name                    = aws_key_pair.generated_key.key_name
   associate_public_ip_address = true
-  vpc_security_group_ids      = [aws_security_group.app_sg.id]
+
+  vpc_security_group_ids = [aws_security_group.app_sg.id]
 
   root_block_device {
     volume_size = 20
@@ -94,7 +115,7 @@ resource "aws_instance" "app_server" {
   }
 
   tags = {
-    Name = "Claudia-Terraform-App-Server"
+    Name = "Claudia-Terraform-App-Server${local.suffixe_nom}"
   }
 }
 
