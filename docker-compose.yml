@@ -30,7 +30,8 @@ services:
         condition: service_healthy
 
   api:
-    image: ${REGISTRY_URL}/claudiaynov/inte-et-dep-api:latest
+    build: ./api
+    image: claudiaynov/inte-et-dep-api:latest
     restart: always
     ports:
       - "8000:8000"
@@ -50,7 +51,10 @@ services:
       start_period: 20s
 
   frontend:
-    image: ${REGISTRY_URL}/claudiaynov/inte-et-dep-frontend:latest
+    build:
+      context: .
+      dockerfile: react.Dockerfile
+    image: claudiaynov/inte-et-dep-frontend:latest
     restart: always
     ports:
       - "3000:3000"
