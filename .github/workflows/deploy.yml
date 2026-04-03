@@ -48,7 +48,12 @@ jobs:
           echo "Attente que l'instance soit prête..."
           sleep 30
           cd terraform/app
-          ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@$PUBLIC_IP "sudo apt update && sudo apt install -y docker.io docker-compose && cd /home/ubuntu && sudo docker compose up -d"
+
+          ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@$PUBLIC_IP "sudo apt update && sudo apt install -y docker.io docker-compose && mkdir -p /home/ubuntu/app"
+
+          scp -o StrictHostKeyChecking=no -i private_key.pem -r ../../* ubuntu@$PUBLIC_IP:/home/ubuntu/app
+
+          ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@$PUBLIC_IP "cd /home/ubuntu/app && sudo docker compose up -d"
 
       - name: Step 4 - Ansible Deployment
         run: echo "Déploiement avec Ansible sur IP $PUBLIC_IP"
