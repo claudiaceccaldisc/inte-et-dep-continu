@@ -1,5 +1,4 @@
 services:
-# 1. Le stockage des images (Backend)
   registry:
     image: registry:2
     restart: always
@@ -12,19 +11,17 @@ services:
       - ./data:/var/lib/registry
       - ./auth:/auth:ro
 
-  # 2. L'interface Web (Frontend)
   ui:
     image: joxit/docker-registry-ui:main
     restart: always
     environment:
-      - REGISTRY_TITLE=AWS Student Registry
-      - REGISTRY_URL=https://{{ public_ip }}:443
-      - SINGLE_REGISTRY=true
-      - DELETE_IMAGES=true
+      REGISTRY_TITLE: AWS Student Registry
+      REGISTRY_URL: https://{{ public_ip }}:443
+      SINGLE_REGISTRY: "true"
+      DELETE_IMAGES: "true"
     depends_on:
       - registry
 
-  # 3. Le Proxy SSL
   nginx:
     image: nginx:alpine
     restart: always
