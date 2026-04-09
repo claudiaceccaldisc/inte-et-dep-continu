@@ -4,31 +4,31 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - arnaud-dev
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout du dépôt
         uses: actions/checkout@v4
 
-      - name: Build frontend image
+      - name: "Construction de l'image frontend"
         run: docker build -t frontend-test -f react.Dockerfile .
 
-      - name: Build API image
+      - name: "Construction de l'image API"
         run: docker build -t api-test ./api
 
-      - name: Setup Terraform
+      - name: Installation de Terraform
         uses: hashicorp/setup-terraform@v3
 
-      - name: Terraform init
+      - name: Initialisation Terraform
         run: |
           cd terraform/app
           terraform init
 
-      - name: Terraform apply
+      - name: Application Terraform (apply)
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -36,14 +36,14 @@ jobs:
           cd terraform/app
           terraform apply -auto-approve
 
-      - name: Export instance IP and SSH key
+      - name: "Récupération de l'IP publique et de la clé SSH"
         run: |
           cd terraform/app
           echo "PUBLIC_IP=$(terraform output -raw public_ip)" >> "$GITHUB_ENV"
           terraform output -raw private_key_pem > private_key.pem
           chmod 600 private_key.pem
 
-      - name: Wait for SSH on new instance
+      - name: Attente du SSH sur la nouvelle instance
         run: |
           KEY="${GITHUB_WORKSPACE}/terraform/app/private_key.pem"
           for i in $(seq 1 40); do
@@ -54,16 +54,16 @@ jobs:
               -o BatchMode=yes \
               ubuntu@"${PUBLIC_IP}" \
               "echo ssh_ok" 2>/dev/null; then
-              echo "SSH ready."
+              echo "SSH prêt."
               exit 0
             fi
-            echo "SSH attempt ${i}/40, waiting 10s..."
+            echo "Tentative SSH ${i}/40, attente 10s..."
             sleep 10
           done
-          echo "Timed out waiting for SSH on ${PUBLIC_IP}:22"
+          echo "Délai dépassé en attendant SSH sur ${PUBLIC_IP}:22"
           exit 1
 
-      - name: Generate .env for pipeline and Ansible
+      - name: Génération du fichier .env
         run: |
           echo "REACT_APP_SERVER_PORT=8000" >> .env
           echo "REACT_APP_API_URL=http://$PUBLIC_IP:8000" >> .env
@@ -73,7 +73,7 @@ jobs:
           echo "REGISTRY_USERNAME=${{ secrets.REGISTRY_USERNAME }}" >> .env
           echo "REGISTRY_TOKEN=${{ secrets.REGISTRY_TOKEN }}" >> .env
 
-      - name: Generate Ansible inventory
+      - name: "Génération de l'inventaire Ansible"
         run: |
           KEY_FILE=../terraform/app/private_key.pem
           {
@@ -84,7 +84,7 @@ jobs:
             echo "$PUBLIC_IP ansible_user=ubuntu ansible_ssh_private_key_file=$KEY_FILE"
           } > ansible/inventory.ini
 
-      - name: Deploy private registry (Ansible)
+      - name: Déploiement du registre privé (Ansible)
         run: |
           set -a
           source .env
@@ -93,13 +93,13 @@ jobs:
           ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini playbook.yml \
             --extra-vars "registry_username=$REGISTRY_USERNAME registry_password=$REGISTRY_TOKEN"
 
-      - name: Wait for registry container
+      - name: Attente du démarrage du registre
         run: sleep 15
 
-      - name: Smoke test registry API
+      - name: "Test rapide de l'API du registre"
         run: curl -k -sS "https://$PUBLIC_IP:443/v2/" || true
 
-      - name: Allow insecure registry on runner (self-signed cert)
+      - name: Configuration Docker sur le runner (registre auto-signé)
         run: |
           sudo tee /etc/docker/daemon.json > /dev/null <<EOF
           {
@@ -112,7 +112,7 @@ jobs:
             sleep 2
           done
 
-      - name: Login, tag, and push images to registry
+      - name: Connexion, tag et push des images vers le registre
         run: |
           echo "${{ secrets.REGISTRY_TOKEN }}" | docker login "${PUBLIC_IP}:443" \
             -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
@@ -121,10 +121,10 @@ jobs:
           docker push "${PUBLIC_IP}:443/frontend:latest"
           docker push "${PUBLIC_IP}:443/backend:latest"
 
-      - name: Brief pause before app deploy
+      - name: Pause avant déploiement applicatif
         run: sleep 30
 
-      - name: Deploy application stack (Ansible)
+      - name: Déploiement de la stack applicative (Ansible)
         run: |
           set -a
           source .env
