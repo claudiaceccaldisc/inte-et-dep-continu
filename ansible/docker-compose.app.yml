@@ -3,6 +3,11 @@ services:
     image: mysql:8
     container_name: mysql_db
     restart: always
+    # Keep MySQL RAM usage low so the stack fits on small EC2 instances (avoids OOM / SSH loss).
+    command:
+      - --performance_schema=OFF
+      - --innodb_buffer_pool_size=128M
+      - --max_connections=80
     env_file:
       - .env
     environment:

@@ -46,20 +46,20 @@ jobs:
       - name: Step 3.2 - Wait for SSH (IMPORTANT)
         run: |
           KEY="${GITHUB_WORKSPACE}/terraform/app/private_key.pem"
-          echo "Waiting for SSH on ubuntu@${PUBLIC_IP} (up to ~12 min)..."
-          for i in $(seq 1 48); do
+          echo "Waiting for SSH on ubuntu@${PUBLIC_IP} (up to ~7 min)..."
+          for i in $(seq 1 40); do
             if ssh -i "$KEY" \
               -o StrictHostKeyChecking=no \
               -o UserKnownHostsFile=/dev/null \
-              -o ConnectTimeout=15 \
+              -o ConnectTimeout=10 \
               -o BatchMode=yes \
               ubuntu@"${PUBLIC_IP}" \
               "echo ssh_ok" 2>/dev/null; then
               echo "SSH is ready."
               exit 0
             fi
-            echo "Attempt ${i}/48: SSH not ready yet, sleeping 15s..."
-            sleep 15
+            echo "Attempt ${i}/40: SSH not ready yet, sleeping 10s..."
+            sleep 10
           done
           echo "Timed out waiting for SSH on ${PUBLIC_IP}:22"
           exit 1
@@ -94,7 +94,7 @@ jobs:
       - name: Step 4.5 - Wait for Registry
         run: |
           echo "Attente du démarrage du registre..."
-          sleep 30
+          sleep 15
 
       - name: Step 4.6 - Test Registry
         run: |
@@ -127,7 +127,7 @@ jobs:
       - name: Step 4.7 - Wait before App deploy
         run: |
           echo "Attente avant déploiement app (stabilisation Docker/SSH)..."
-          sleep 60
+          sleep 30
 
       - name: Step 5 - Run Ansible Playbook (App)
         run: |
@@ -139,19 +139,19 @@ jobs:
 
           wait_for_ssh() {
             echo "Waiting for SSH on ubuntu@${PUBLIC_IP}..."
-            for i in $(seq 1 24); do
+            for i in $(seq 1 18); do
               if ssh -i "$KEY" \
                 -o StrictHostKeyChecking=no \
                 -o UserKnownHostsFile=/dev/null \
-                -o ConnectTimeout=15 \
+                -o ConnectTimeout=10 \
                 -o BatchMode=yes \
                 ubuntu@"${PUBLIC_IP}" \
                 "echo ssh_ok" 2>/dev/null; then
                 echo "SSH is reachable."
                 return 0
               fi
-              echo "Attempt ${i}/24: SSH not reachable yet, sleeping 15s..."
-              sleep 15
+              echo "Attempt ${i}/18: SSH not reachable yet, sleeping 10s..."
+              sleep 10
             done
             return 1
           }
@@ -172,7 +172,7 @@ jobs:
             ssh -i "$KEY" \
               -o StrictHostKeyChecking=no \
               -o UserKnownHostsFile=/dev/null \
-              -o ConnectTimeout=15 \
+              -o ConnectTimeout=10 \
               ubuntu@"${PUBLIC_IP}" \
               "sudo bash -lc '
                 set +e
@@ -203,7 +203,7 @@ jobs:
             fi
             echo "App deploy attempt ${attempt} failed."
             collect_remote_diagnostics
-            sleep 45
+            sleep 25
             cd "$GITHUB_WORKSPACE"
           done
 
