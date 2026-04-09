@@ -23,12 +23,10 @@ provider "aws" {
   region = "eu-west-3"
 }
 
-# Active un suffixe aléatoire pour éviter les doublons
-# dans les déploiements éphémères / pipeline.
 variable "unique_suffix_enabled" {
   description = "Active un suffixe aléatoire sur certains noms AWS"
   type        = bool
-  default     = false
+  default     = true
 }
 
 data "aws_ami" "ubuntu" {
@@ -42,7 +40,7 @@ data "aws_ami" "ubuntu" {
 }
 
 resource "random_id" "suffix" {
-  byte_length = 2
+  byte_length = 4
 }
 
 locals {
@@ -67,7 +65,7 @@ resource "local_file" "ssh_key" {
 
 resource "aws_security_group" "app_sg" {
   name        = "app-sg-claudia${local.suffixe_nom}"
-  description = "Autorise SSH et les accès applicatifs"
+  description = "Allow SSH and application access"
 
   ingress {
     description = "SSH"
@@ -93,6 +91,14 @@ resource "aws_security_group" "app_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  ingress {
+    description = "Registry HTTPS"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -103,7 +109,7 @@ resource "aws_security_group" "app_sg" {
 
 resource "aws_instance" "app_server" {
   ami                         = data.aws_ami.ubuntu.id
-  instance_type               = "t3.small"
+  instance_type               = "t3.micro"
   key_name                    = aws_key_pair.generated_key.key_name
   associate_public_ip_address = true
 
