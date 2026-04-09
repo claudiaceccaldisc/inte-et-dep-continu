@@ -3,6 +3,11 @@ services:
     image: mysql:8
     container_name: mysql_db
     restart: always
+    # Keep MySQL RAM usage low so the stack fits on small EC2 instances (avoids OOM / SSH loss).
+    command:
+      - --performance_schema=OFF
+      - --innodb_buffer_pool_size=128M
+      - --max_connections=80
     env_file:
       - .env
     environment:
@@ -14,9 +19,9 @@ services:
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$${MYSQL_ROOT_PASSWORD} --silent || exit 1"]
       interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 20s
+      timeout: 10s
+      retries: 20
+      start_period: 90s
 
   adminer:
     image: adminer

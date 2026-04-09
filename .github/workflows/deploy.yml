@@ -11,24 +11,24 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      - name: Checkout du dépôt
         uses: actions/checkout@v4
 
-      - name: Step 1 - Build Docker Frontend
+      - name: "Construction de l'image frontend"
         run: docker build -t frontend-test -f react.Dockerfile .
 
-      - name: Step 1 bis - Build Docker API
+      - name: "Construction de l'image API"
         run: docker build -t api-test ./api
 
-      - name: Step 2 - Install Terraform
+      - name: Installation de Terraform
         uses: hashicorp/setup-terraform@v3
 
-      - name: Step 2 bis - Terraform Init
+      - name: Initialisation Terraform
         run: |
           cd terraform/app
           terraform init
 
-      - name: Step 2 ter - Terraform Apply
+      - name: Application Terraform (apply)
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -36,35 +36,34 @@ jobs:
           cd terraform/app
           terraform apply -auto-approve
 
-      - name: Step 3 - Get IP and SSH Key
+      - name: "Récupération de l'IP publique et de la clé SSH"
         run: |
           cd terraform/app
-          echo "PUBLIC_IP=$(terraform output -raw public_ip)" >> $GITHUB_ENV
+          echo "PUBLIC_IP=$(terraform output -raw public_ip)" >> "$GITHUB_ENV"
           terraform output -raw private_key_pem > private_key.pem
           chmod 600 private_key.pem
 
-      - name: Step 3.2 - Wait for SSH (IMPORTANT)
+      - name: Attente du SSH sur la nouvelle instance
         run: |
           KEY="${GITHUB_WORKSPACE}/terraform/app/private_key.pem"
-          echo "Waiting for SSH on ubuntu@${PUBLIC_IP} (up to ~12 min)..."
-          for i in $(seq 1 48); do
+          for i in $(seq 1 40); do
             if ssh -i "$KEY" \
               -o StrictHostKeyChecking=no \
               -o UserKnownHostsFile=/dev/null \
-              -o ConnectTimeout=15 \
+              -o ConnectTimeout=10 \
               -o BatchMode=yes \
               ubuntu@"${PUBLIC_IP}" \
               "echo ssh_ok" 2>/dev/null; then
-              echo "SSH is ready."
+              echo "SSH prêt."
               exit 0
             fi
-            echo "Attempt ${i}/48: SSH not ready yet, sleeping 15s..."
-            sleep 15
+            echo "Tentative SSH ${i}/40, attente 10s..."
+            sleep 10
           done
-          echo "Timed out waiting for SSH on ${PUBLIC_IP}:22"
+          echo "Délai dépassé en attendant SSH sur ${PUBLIC_IP}:22"
           exit 1
 
-      - name: Step 3.5 - Generate .env file
+      - name: Génération du fichier .env
         run: |
           echo "REACT_APP_SERVER_PORT=8000" >> .env
           echo "REACT_APP_API_URL=http://$PUBLIC_IP:8000" >> .env
@@ -74,31 +73,33 @@ jobs:
           echo "REGISTRY_USERNAME=${{ secrets.REGISTRY_USERNAME }}" >> .env
           echo "REGISTRY_TOKEN=${{ secrets.REGISTRY_TOKEN }}" >> .env
 
-      - name: Step 3.6 - Generate inventory.ini
+      - name: "Génération de l'inventaire Ansible"
         run: |
-          echo "[registry_hosts]" > ansible/inventory.ini
-          echo "$PUBLIC_IP ansible_user=ubuntu ansible_ssh_private_key_file=../terraform/app/private_key.pem" >> ansible/inventory.ini
-          echo "" >> ansible/inventory.ini
-          echo "[app_hosts]" >> ansible/inventory.ini
-          echo "$PUBLIC_IP ansible_user=ubuntu ansible_ssh_private_key_file=../terraform/app/private_key.pem" >> ansible/inventory.ini
+          KEY_FILE=../terraform/app/private_key.pem
+          {
+            echo "[registry_hosts]"
+            echo "$PUBLIC_IP ansible_user=ubuntu ansible_ssh_private_key_file=$KEY_FILE"
+            echo ""
+            echo "[app_hosts]"
+            echo "$PUBLIC_IP ansible_user=ubuntu ansible_ssh_private_key_file=$KEY_FILE"
+          } > ansible/inventory.ini
 
-      - name: Step 4 - Deploy Registry
+      - name: Déploiement du registre privé (Ansible)
         run: |
+          set -a
+          source .env
+          set +a
           cd ansible
-          ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini playbook.yml
+          ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini playbook.yml \
+            --extra-vars "registry_username=$REGISTRY_USERNAME registry_password=$REGISTRY_TOKEN"
 
-      - name: Step 4.5 - Wait for Registry
-        run: |
-          echo "Attente du démarrage du registre..."
-          sleep 30
+      - name: Attente du démarrage du registre
+        run: sleep 15
 
-      - name: Step 4.6 - Test Registry
-        run: |
-          echo "Test du registre..."
-          curl -k https://$PUBLIC_IP:443/v2/ || true
+      - name: "Test rapide de l'API du registre"
+        run: curl -k -sS "https://$PUBLIC_IP:443/v2/" || true
 
-      # Self-signed cert on the registry: Docker rejects it unless this host:port is listed here.
-      - name: Step 4.65 - Configure Docker for self-signed registry
+      - name: Configuration Docker sur le runner (registre auto-signé)
         run: |
           sudo tee /etc/docker/daemon.json > /dev/null <<EOF
           {
@@ -111,33 +112,24 @@ jobs:
             sleep 2
           done
 
-      - name: Step 1 ter - Login + Tag + Push images (REGISTRY)
+      - name: Connexion, tag et push des images vers le registre
         run: |
-          echo "${{ secrets.REGISTRY_TOKEN }}" | docker login "${PUBLIC_IP}:443" -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
+          echo "${{ secrets.REGISTRY_TOKEN }}" | docker login "${PUBLIC_IP}:443" \
+            -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
+          docker tag frontend-test "${PUBLIC_IP}:443/frontend:latest"
+          docker tag api-test "${PUBLIC_IP}:443/backend:latest"
+          docker push "${PUBLIC_IP}:443/frontend:latest"
+          docker push "${PUBLIC_IP}:443/backend:latest"
 
-          docker tag frontend-test "${PUBLIC_IP}:443/claudiaynov/inte-et-dep-frontend:latest"
-          docker tag api-test "${PUBLIC_IP}:443/claudiaynov/inte-et-dep-api:latest"
+      - name: Pause avant déploiement applicatif
+        run: sleep 30
 
-          docker push "${PUBLIC_IP}:443/claudiaynov/inte-et-dep-frontend:latest"
-          docker push "${PUBLIC_IP}:443/claudiaynov/inte-et-dep-api:latest"
-
-      - name: Step 4.7 - Wait before App deploy
+      - name: Déploiement de la stack applicative (Ansible)
         run: |
-          echo "Attente avant déploiement app (stabilisation Docker/SSH)..."
-          sleep 60
-
-      - name: Step 5 - Run Ansible Playbook (App)
-        run: |
-          export $(grep REGISTRY_USERNAME .env)
-          export $(grep REGISTRY_TOKEN .env)
-
+          set -a
+          source .env
+          set +a
           cd ansible
-
-          (
-          ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini playbook-app.yml \
-          --extra-vars "registry_url=$PUBLIC_IP:443 registry_username=$REGISTRY_USERNAME registry_token=$REGISTRY_TOKEN"
-          ) || (
-          sleep 30
-          ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini playbook-app.yml \
-          --extra-vars "registry_url=$PUBLIC_IP:443 registry_username=$REGISTRY_USERNAME registry_token=$REGISTRY_TOKEN"
-          )
+          EV="registry_url=$PUBLIC_IP:443 registry_username=$REGISTRY_USERNAME registry_password=$REGISTRY_TOKEN react_app_server_port=$REACT_APP_SERVER_PORT react_app_api_url=$REACT_APP_API_URL mysql_database=$MYSQL_DATABASE mysql_root_password=$MYSQL_ROOT_PASSWORD"
+          ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini playbook-app.yml --extra-vars "$EV" \
+            || ( sleep 30 && ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini playbook-app.yml --extra-vars "$EV" )

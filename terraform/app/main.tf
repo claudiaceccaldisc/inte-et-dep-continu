@@ -109,7 +109,8 @@ resource "aws_security_group" "app_sg" {
 
 resource "aws_instance" "app_server" {
   ami                         = data.aws_ami.ubuntu.id
-  instance_type               = "t3.micro"
+  # t3.micro (1 GiB) is too small for MySQL 8 + Docker + full stack; causes OOM and SSH drops.
+  instance_type               = "t3.small"
   key_name                    = aws_key_pair.generated_key.key_name
   associate_public_ip_address = true
 
