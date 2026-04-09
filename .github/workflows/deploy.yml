@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - main
+      - arnaud-dev
 
 jobs:
   deploy:
@@ -84,8 +84,12 @@ jobs:
 
       - name: Step 4 - Deploy Registry
         run: |
+          export $(grep REGISTRY_USERNAME .env)
+          export $(grep REGISTRY_TOKEN .env)
+
           cd ansible
-          ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini playbook.yml
+          ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini playbook.yml \
+          --extra-vars "registry_username=$REGISTRY_USERNAME registry_password=$REGISTRY_TOKEN"
 
       - name: Step 4.5 - Wait for Registry
         run: |
@@ -97,7 +101,6 @@ jobs:
           echo "Test du registre..."
           curl -k https://$PUBLIC_IP:443/v2/ || true
 
-      # Self-signed cert on the registry: Docker rejects it unless this host:port is listed here.
       - name: Step 4.65 - Configure Docker for self-signed registry
         run: |
           sudo tee /etc/docker/daemon.json > /dev/null <<EOF
