@@ -162,6 +162,38 @@ jobs:
             --extra-vars "registry_url=$PUBLIC_IP:443 registry_username=$REGISTRY_USERNAME registry_password=$REGISTRY_TOKEN react_app_server_port=$REACT_APP_SERVER_PORT react_app_api_url=$REACT_APP_API_URL mysql_database=$MYSQL_DATABASE mysql_root_password=$MYSQL_ROOT_PASSWORD"
           }
 
+          collect_remote_diagnostics() {
+            echo "Collecting remote diagnostics..."
+            if ! wait_for_ssh; then
+              echo "SSH is still unreachable, skipping remote diagnostics."
+              return 0
+            fi
+
+            ssh -i "$KEY" \
+              -o StrictHostKeyChecking=no \
+              -o UserKnownHostsFile=/dev/null \
+              -o ConnectTimeout=15 \
+              ubuntu@"${PUBLIC_IP}" \
+              "sudo bash -lc '
+                set +e
+                echo \"===== SYSTEM =====\"
+                date
+                uptime
+                free -h
+                df -h
+                echo
+                echo \"===== DOCKER SERVICE =====\"
+                systemctl is-active docker || true
+                journalctl -u docker --no-pager -n 120 || true
+                echo
+                echo \"===== CONTAINERS =====\"
+                docker ps -a || true
+                echo
+                echo \"===== COMPOSE LOGS =====\"
+                cd /home/ubuntu/app-stack && docker compose logs --tail 200 || true
+              '" || true
+          }
+
           for attempt in 1 2 3; do
             echo "App deploy attempt ${attempt}/3"
             wait_for_ssh || true
@@ -170,6 +202,7 @@ jobs:
               exit 0
             fi
             echo "App deploy attempt ${attempt} failed."
+            collect_remote_diagnostics
             sleep 45
             cd "$GITHUB_WORKSPACE"
           done
