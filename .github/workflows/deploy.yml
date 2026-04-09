@@ -131,16 +131,17 @@ jobs:
 
       - name: Step 5 - Run Ansible Playbook (App)
         run: |
-          export $(grep REGISTRY_USERNAME .env)
-          export $(grep REGISTRY_TOKEN .env)
+          set -a
+          source .env
+          set +a
 
           cd ansible
 
           (
           ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini playbook-app.yml \
-          --extra-vars "registry_url=$PUBLIC_IP:443 registry_username=$REGISTRY_USERNAME registry_password=$REGISTRY_TOKEN"
+          --extra-vars "registry_url=$PUBLIC_IP:443 registry_username=$REGISTRY_USERNAME registry_password=$REGISTRY_TOKEN react_app_server_port=$REACT_APP_SERVER_PORT react_app_api_url=$REACT_APP_API_URL mysql_database=$MYSQL_DATABASE mysql_root_password=$MYSQL_ROOT_PASSWORD"
           ) || (
           sleep 30
           ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini playbook-app.yml \
-          --extra-vars "registry_url=$PUBLIC_IP:443 registry_username=$REGISTRY_USERNAME registry_password=$REGISTRY_TOKEN"
+          --extra-vars "registry_url=$PUBLIC_IP:443 registry_username=$REGISTRY_USERNAME registry_password=$REGISTRY_TOKEN react_app_server_port=$REACT_APP_SERVER_PORT react_app_api_url=$REACT_APP_API_URL mysql_database=$MYSQL_DATABASE mysql_root_password=$MYSQL_ROOT_PASSWORD"
           )
