@@ -118,11 +118,11 @@ jobs:
         run: |
           echo "${{ secrets.REGISTRY_TOKEN }}" | docker login "${PUBLIC_IP}:443" -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
 
-          docker tag frontend-test "${PUBLIC_IP}:443/claudiaynov/inte-et-dep-frontend:latest"
-          docker tag api-test "${PUBLIC_IP}:443/claudiaynov/inte-et-dep-api:latest"
+          docker tag frontend-test "${PUBLIC_IP}:443/frontend:latest"
+          docker tag api-test "${PUBLIC_IP}:443/backend:latest"
 
-          docker push "${PUBLIC_IP}:443/claudiaynov/inte-et-dep-frontend:latest"
-          docker push "${PUBLIC_IP}:443/claudiaynov/inte-et-dep-api:latest"
+          docker push "${PUBLIC_IP}:443/frontend:latest"
+          docker push "${PUBLIC_IP}:443/backend:latest"
 
       - name: Step 4.7 - Wait before App deploy
         run: |
@@ -135,13 +135,44 @@ jobs:
           source .env
           set +a
 
-          cd ansible
+          KEY="${GITHUB_WORKSPACE}/terraform/app/private_key.pem"
 
-          (
-          ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini playbook-app.yml \
-          --extra-vars "registry_url=$PUBLIC_IP:443 registry_username=$REGISTRY_USERNAME registry_password=$REGISTRY_TOKEN react_app_server_port=$REACT_APP_SERVER_PORT react_app_api_url=$REACT_APP_API_URL mysql_database=$MYSQL_DATABASE mysql_root_password=$MYSQL_ROOT_PASSWORD"
-          ) || (
-          sleep 30
-          ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini playbook-app.yml \
-          --extra-vars "registry_url=$PUBLIC_IP:443 registry_username=$REGISTRY_USERNAME registry_password=$REGISTRY_TOKEN react_app_server_port=$REACT_APP_SERVER_PORT react_app_api_url=$REACT_APP_API_URL mysql_database=$MYSQL_DATABASE mysql_root_password=$MYSQL_ROOT_PASSWORD"
-          )
+          wait_for_ssh() {
+            echo "Waiting for SSH on ubuntu@${PUBLIC_IP}..."
+            for i in $(seq 1 24); do
+              if ssh -i "$KEY" \
+                -o StrictHostKeyChecking=no \
+                -o UserKnownHostsFile=/dev/null \
+                -o ConnectTimeout=15 \
+                -o BatchMode=yes \
+                ubuntu@"${PUBLIC_IP}" \
+                "echo ssh_ok" 2>/dev/null; then
+                echo "SSH is reachable."
+                return 0
+              fi
+              echo "Attempt ${i}/24: SSH not reachable yet, sleeping 15s..."
+              sleep 15
+            done
+            return 1
+          }
+
+          run_app_playbook() {
+            cd ansible
+            ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini playbook-app.yml \
+            --extra-vars "registry_url=$PUBLIC_IP:443 registry_username=$REGISTRY_USERNAME registry_password=$REGISTRY_TOKEN react_app_server_port=$REACT_APP_SERVER_PORT react_app_api_url=$REACT_APP_API_URL mysql_database=$MYSQL_DATABASE mysql_root_password=$MYSQL_ROOT_PASSWORD"
+          }
+
+          for attempt in 1 2 3; do
+            echo "App deploy attempt ${attempt}/3"
+            wait_for_ssh || true
+            if run_app_playbook; then
+              echo "App deploy succeeded."
+              exit 0
+            fi
+            echo "App deploy attempt ${attempt} failed."
+            sleep 45
+            cd "$GITHUB_WORKSPACE"
+          done
+
+          echo "App deploy failed after 3 attempts."
+          exit 1

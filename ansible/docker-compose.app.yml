@@ -29,7 +29,7 @@ services:
       - "127.0.0.1:8080:8080"
 
   api:
-    image: "{{ registry_url }}/claudiaynov/inte-et-dep-api:latest"
+    image: "{{ registry_url }}/backend:latest"
     container_name: api
     restart: always
     env_file:
@@ -52,7 +52,7 @@ services:
       start_period: 20s
 
   frontend:
-    image: "{{ registry_url }}/claudiaynov/inte-et-dep-frontend:latest"
+    image: "{{ registry_url }}/frontend:latest"
     container_name: frontend
     restart: always
     env_file:
