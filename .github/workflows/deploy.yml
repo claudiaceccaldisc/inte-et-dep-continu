@@ -96,13 +96,14 @@ jobs:
 
       - name: "Génération de l'inventaire Ansible"
         run: |
-          KEY_FILE=../terraform/registry/registry-key-terraform.pem
+          REGISTRY_KEY=../terraform/registry/registry-key-terraform.pem
+          APP_KEY=../terraform/app/private_key.pem
           {
             echo "[registry_hosts]"
-            echo "$REGISTRY_IP ansible_user=ubuntu ansible_ssh_private_key_file=$KEY_FILE"
+            echo "$REGISTRY_IP ansible_user=ubuntu ansible_ssh_private_key_file=$REGISTRY_KEY"
             echo ""
             echo "[app_hosts]"
-            echo "$PUBLIC_IP ansible_user=ubuntu ansible_ssh_private_key_file=$KEY_FILE"
+            echo "$PUBLIC_IP ansible_user=ubuntu ansible_ssh_private_key_file=$APP_KEY"
           } > ansible/inventory.ini
 
       - name: Déploiement du registre privé (Ansible)
