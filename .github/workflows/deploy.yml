@@ -118,7 +118,7 @@ jobs:
         run: sleep 15
 
       - name: "Test rapide de l'API du registre"
-        run: curl -k -sS "https://$PUBLIC_IP:443/v2/" || true
+        run: curl -k -sS "https://$REGISTRY_IP:443/v2/" || true
 
       - name: Configuration Docker sur le runner (registre auto-signé)
         run: |
@@ -135,12 +135,12 @@ jobs:
 
       - name: Connexion, tag et push des images vers le registre
         run: |
-          echo "${{ secrets.REGISTRY_TOKEN }}" | docker login "${PUBLIC_IP}:443" \
+          echo "${{ secrets.REGISTRY_TOKEN }}" | docker login "${REGISTRY_IP}:443" \
             -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
-          docker tag frontend-test "${PUBLIC_IP}:443/frontend:latest"
-          docker tag api-test "${PUBLIC_IP}:443/backend:latest"
-          docker push "${PUBLIC_IP}:443/frontend:latest"
-          docker push "${PUBLIC_IP}:443/backend:latest"
+          docker tag frontend-test "${REGISTRY_IP}:443/frontend:latest"
+          docker tag api-test "${REGISTRY_IP}:443/backend:latest"
+          docker push "${REGISTRY_IP}:443/frontend:latest"
+          docker push "${REGISTRY_IP}:443/backend:latest"
 
       - name: Pause avant déploiement applicatif
         run: sleep 30
