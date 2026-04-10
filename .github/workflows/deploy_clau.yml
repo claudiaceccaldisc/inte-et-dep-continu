@@ -107,11 +107,12 @@ jobs:
 
       - name: Génération de l'inventaire Ansible app
         run: |
-          KEY_FILE=../terraform/app/private_key.pem
-          {
+            mkdir -p ansible
+            KEY_FILE=../terraform/app/private_key.pem
+            {
             echo "[app_hosts]"
             echo "$PUBLIC_IP ansible_user=ubuntu ansible_ssh_private_key_file=$KEY_FILE"
-          } > ansible/inventory.ini
+            } > ansible/inventory.ini
 
       - name: Pause avant déploiement applicatif
         run: sleep 30
