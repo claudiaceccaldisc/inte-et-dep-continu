@@ -20,6 +20,25 @@ jobs:
       - name: "Construction de l'image API"
         run: docker build -t api-test ./api
 
+      - name: Récupérer IP du registry (avant docker)
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          cd terraform/registry
+          terraform init
+          terraform apply -auto-approve
+          echo "REGISTRY_IP=$(terraform output -raw public_ip)" >> "$GITHUB_ENV"
+
+      - name: Connexion, tag et push des images vers le registre
+        run: |
+          echo "${{ secrets.REGISTRY_TOKEN }}" | docker login "${REGISTRY_IP}:443" \
+            -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
+          docker tag frontend-test "${REGISTRY_IP}:443/frontend:latest"
+          docker tag api-test "${REGISTRY_IP}:443/backend:latest"
+          docker push "${REGISTRY_IP}:443/frontend:latest"
+          docker push "${REGISTRY_IP}:443/backend:latest"
+
       - name: Installation de Terraform
         uses: hashicorp/setup-terraform@v3
 
@@ -132,15 +151,6 @@ jobs:
             docker info >/dev/null 2>&1 && break
             sleep 2
           done
-
-      - name: Connexion, tag et push des images vers le registre
-        run: |
-          echo "${{ secrets.REGISTRY_TOKEN }}" | docker login "${PUBLIC_IP}:443" \
-            -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
-          docker tag frontend-test "${PUBLIC_IP}:443/frontend:latest"
-          docker tag api-test "${PUBLIC_IP}:443/backend:latest"
-          docker push "${PUBLIC_IP}:443/frontend:latest"
-          docker push "${PUBLIC_IP}:443/backend:latest"
 
       - name: Pause avant déploiement applicatif
         run: sleep 30
