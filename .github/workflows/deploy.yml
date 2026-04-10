@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - main
+      - arnaud-dev
 
 jobs:
   deploy:
@@ -23,7 +23,22 @@ jobs:
       - name: Installation de Terraform
         uses: hashicorp/setup-terraform@v3
 
-      - name: Initialisation Terraform
+      # 🔥 NOUVEAU : TERRAFORM REGISTRY
+      - name: Initialisation Terraform Registry
+        run: |
+          cd terraform/registry
+          terraform init
+
+      - name: Application Terraform Registry
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          cd terraform/registry
+          terraform apply -auto-approve
+
+      # 🔥 EXISTANT : TERRAFORM APP
+      - name: Initialisation Terraform App
         run: |
           cd terraform/app
           terraform init
