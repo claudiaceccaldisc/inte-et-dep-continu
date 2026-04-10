@@ -1,0 +1,138 @@
+name: Deploy Pipeline
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      REGISTRY_URL: ${{ vars.REGISTRY_URL }}
+      MYSQL_DATABASE: ${{ vars.MYSQL_DATABASE }}
+      REACT_APP_SERVER_PORT: ${{ vars.REACT_APP_SERVER_PORT }}
+
+    steps:
+      - name: Checkout du dépôt
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Installation Ansible
+        run: |
+          python -m pip install --upgrade pip
+          pip install ansible docker requests
+          ansible-galaxy collection install community.docker
+
+      - name: Build frontend
+        run: docker build -t frontend-test -f react.Dockerfile .
+
+      - name: Build backend
+        run: docker build -t api-test ./api
+
+      - name: Configuration Docker runner pour registre auto-signé
+        run: |
+          sudo tee /etc/docker/daemon.json > /dev/null <<EOF
+          {
+            "insecure-registries": ["${REGISTRY_URL}"]
+          }
+          EOF
+          sudo systemctl restart docker
+          for i in $(seq 1 15); do
+            docker info >/dev/null 2>&1 && break
+            sleep 2
+          done
+
+      - name: Login registry
+        run: |
+          echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login "${REGISTRY_URL}" \
+            -u "${{ secrets.REGISTRY_USERNAME }}" \
+            --password-stdin
+
+      - name: Tag images
+        run: |
+          docker tag frontend-test "${REGISTRY_URL}/frontend:latest"
+          docker tag api-test "${REGISTRY_URL}/backend:latest"
+
+      - name: Push frontend
+        run: docker push "${REGISTRY_URL}/frontend:latest"
+
+      - name: Push backend
+        run: docker push "${REGISTRY_URL}/backend:latest"
+
+      - name: Terraform init app
+        working-directory: terraform/app
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ env.AWS_REGION }}
+        run: terraform init
+
+      - name: Terraform apply app
+        working-directory: terraform/app
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ env.AWS_REGION }}
+        run: terraform apply -auto-approve
+
+      - name: Récupération IP app et clé SSH
+        working-directory: terraform/app
+        run: |
+          echo "APP_IP=$(terraform output -raw public_ip)" >> "$GITHUB_ENV"
+          terraform output -raw private_key_pem > key.pem
+          chmod 600 key.pem
+
+      - name: Génération inventory.ini
+        run: |
+          cat > ansible/inventory.ini <<EOF
+          [app_hosts]
+          ${APP_IP} ansible_user=ubuntu ansible_ssh_private_key_file=../terraform/app/key.pem ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+          EOF
+
+      - name: Attente du SSH sur l'app
+        run: |
+          KEY="${GITHUB_WORKSPACE}/terraform/app/key.pem"
+          for i in $(seq 1 40); do
+            if ssh -i "$KEY" \
+              -o StrictHostKeyChecking=no \
+              -o UserKnownHostsFile=/dev/null \
+              -o ConnectTimeout=10 \
+              -o BatchMode=yes \
+              ubuntu@"${APP_IP}" \
+              "echo ssh_ok"; then
+              echo "SSH prêt."
+              exit 0
+            fi
+            echo "Tentative SSH ${i}/40, attente 10s..."
+            sleep 10
+          done
+          echo "Délai dépassé en attendant SSH sur ${APP_IP}:22"
+          exit 1
+
+      - name: Déploiement de la stack applicative
+        run: |
+          cd ansible
+          EV="registry_url=${REGISTRY_URL} registry_username=${{ secrets.REGISTRY_USERNAME }} registry_password=${{ secrets.REGISTRY_PASSWORD }} react_app_server_port=${REACT_APP_SERVER_PORT} react_app_api_url=http://${APP_IP}:8000 mysql_database=${MYSQL_DATABASE} mysql_root_password=${{ secrets.MYSQL_ROOT_PASSWORD }}"
+          ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini playbook-app.yml --extra-vars "$EV"
+
+      - name: Attente démarrage app
+        run: sleep 30
+
+      - name: Validation frontend
+        run: curl --fail "http://${APP_IP}:3000"
+
+      - name: Validation backend
+        run: curl --fail "http://${APP_IP}:8000/users"
+
+      - name: Affichage URL finale
+        run: |
+          echo "Frontend: http://${APP_IP}:3000"
+          echo "Backend:  http://${APP_IP}:8000/users"
