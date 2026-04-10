@@ -156,7 +156,17 @@ jobs:
             || ( sleep 30 && ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini playbook-app.yml --extra-vars "$EV" )
 
       - name: Validation frontend
-        run: curl -sS "http://$PUBLIC_IP:3000" || exit 1
+        run: |
+          for i in $(seq 1 20); do
+            if curl -s "http://$PUBLIC_IP:3000" > /dev/null; then
+              echo "Frontend OK"
+              exit 0
+            fi
+            echo "Attente frontend ${i}/20..."
+            sleep 5
+          done
+          echo "Frontend KO"
+          exit 1
 
       - name: Validation backend
         run: curl -sS "http://$PUBLIC_IP:8000" || exit 1
