@@ -41,10 +41,6 @@ data "aws_ami" "ubuntu" {
 
 resource "random_id" "suffix" {
   byte_length = 4
-
-  keepers = {
-    always = timestamp()
-  }
 }
 
 locals {

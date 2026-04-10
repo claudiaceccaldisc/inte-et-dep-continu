@@ -35,7 +35,7 @@ resource "tls_private_key" "pk" {
 }
 
 resource "aws_key_pair" "generated_key" {
-  key_name   = "registry-key-terraform-claudia"
+  key_name   = "registry-key-terraform-claudia-${timestamp()}"
   public_key = tls_private_key.pk.public_key_openssh
 }
 
@@ -46,7 +46,7 @@ resource "local_file" "ssh_key" {
 }
 
 resource "aws_security_group" "registry_sg" {
-  name        = "registry-sg-simple-claudia"
+  name        = "registry-sg-simple-claudia-${timestamp()}"
   description = "Allow SSH, HTTP (UI), Registry (5000)"
 
   ingress {
