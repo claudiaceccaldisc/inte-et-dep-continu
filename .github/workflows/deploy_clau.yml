@@ -2,112 +2,87 @@ name: Deploy Pipeline Claudia Test
 
 on:
   workflow_dispatch:
-  push:
-   branches:
-      - final-deploy
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}
-      REGISTRY_URL: ${{ vars.REGISTRY_URL }}
-      MYSQL_DATABASE: ${{ vars.MYSQL_DATABASE }}
-      REACT_APP_SERVER_PORT: ${{ vars.REACT_APP_SERVER_PORT }}
+      REGISTRY_IP: ${{ vars.REGISTRY_IP }}
+      MYSQL_DATABASE: users
+      REACT_APP_SERVER_PORT: 3000
 
     steps:
       - name: Checkout du dépôt
         uses: actions/checkout@v4
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Installation Ansible
-        run: |
-          python -m pip install --upgrade pip
-          pip install ansible docker requests
-          ansible-galaxy collection install community.docker
-
-      - name: Build frontend
+      - name: Construction de l'image frontend
         run: docker build -t frontend-test -f react.Dockerfile .
 
-      - name: Build backend
+      - name: Construction de l'image API
         run: docker build -t api-test ./api
 
-      - name: Configuration Docker runner pour registre auto-signé
+      - name: Installation de Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Configuration Docker sur le runner
         run: |
-            echo "REGISTRY_URL=${REGISTRY_URL}"
-            test -n "${REGISTRY_URL}"
-
-            sudo mkdir -p /etc/docker
-            printf '{\n  "insecure-registries": ["%s"]\n}\n' "${REGISTRY_URL}" | sudo tee /etc/docker/daemon.json
-
-            sudo systemctl restart docker || (sudo systemctl status docker --no-pager && sudo journalctl -xeu docker.service --no-pager && exit 1)
-
-            docker info
-
-      - name: Login registry
-        run: |
-          echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login "${REGISTRY_URL}" \
-            -u "${{ secrets.REGISTRY_USERNAME }}" \
-            --password-stdin
-
-      - name: Tag images
-        run: |
-          docker tag frontend-test "${REGISTRY_URL}/frontend:latest"
-          docker tag api-test "${REGISTRY_URL}/backend:latest"
-
-      - name: Push frontend
-        run: docker push "${REGISTRY_URL}/frontend:latest"
-
-      - name: Push backend
-        run: docker push "${REGISTRY_URL}/backend:latest"
-
-      - name: Terraform init app
-        working-directory: terraform/app
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: ${{ env.AWS_REGION }}
-        run: terraform init
-
-      - name: Terraform apply app
-        working-directory: terraform/app
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: ${{ env.AWS_REGION }}
-        run: terraform apply -auto-approve
-
-      - name: Récupération IP app et clé SSH
-        working-directory: terraform/app
-        run: |
-          echo "APP_IP=$(terraform output -raw public_ip)" >> "$GITHUB_ENV"
-          terraform output -raw private_key_pem > key.pem
-          chmod 600 key.pem
-
-      - name: Génération inventory.ini
-        run: |
-          cat > ansible/inventory.ini <<EOF
-          [app_hosts]
-          ${APP_IP} ansible_user=ubuntu ansible_ssh_private_key_file=../terraform/app/key.pem ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+          sudo mkdir -p /etc/docker
+          sudo tee /etc/docker/daemon.json > /dev/null <<EOF
+          {
+            "insecure-registries": ["${REGISTRY_IP}:443"]
+          }
           EOF
+          sudo systemctl restart docker
+          for i in $(seq 1 15); do
+            docker info >/dev/null 2>&1 && break
+            sleep 2
+          done
 
-      - name: Attente du SSH sur l'app
+      - name: Test rapide de l'API du registre
+        run: curl -k -sS "https://${REGISTRY_IP}:443/v2/" || true
+
+      - name: Connexion, tag et push des images vers le registre
         run: |
-          KEY="${GITHUB_WORKSPACE}/terraform/app/key.pem"
+          echo "${{ secrets.REGISTRY_TOKEN }}" | docker login "${REGISTRY_IP}:443" \
+            -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
+          docker tag frontend-test "${REGISTRY_IP}:443/frontend:latest"
+          docker tag api-test "${REGISTRY_IP}:443/backend:latest"
+          docker push "${REGISTRY_IP}:443/frontend:latest"
+          docker push "${REGISTRY_IP}:443/backend:latest"
+
+      - name: Initialisation Terraform App
+        run: |
+          cd terraform/app
+          terraform init
+
+      - name: Application Terraform App
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ env.AWS_REGION }}
+        run: |
+          cd terraform/app
+          terraform apply -auto-approve
+
+      - name: Récupération de l'IP publique et de la clé SSH
+        run: |
+          cd terraform/app
+          echo "PUBLIC_IP=$(terraform output -raw public_ip)" >> "$GITHUB_ENV"
+          terraform output -raw private_key_pem > private_key.pem
+          chmod 600 private_key.pem
+
+      - name: Attente du SSH sur la nouvelle instance
+        run: |
+          KEY="${GITHUB_WORKSPACE}/terraform/app/private_key.pem"
           for i in $(seq 1 40); do
             if ssh -i "$KEY" \
               -o StrictHostKeyChecking=no \
               -o UserKnownHostsFile=/dev/null \
               -o ConnectTimeout=10 \
               -o BatchMode=yes \
-              ubuntu@"${APP_IP}" \
+              ubuntu@"${PUBLIC_IP}" \
               "echo ssh_ok"; then
               echo "SSH prêt."
               exit 0
@@ -115,25 +90,52 @@ jobs:
             echo "Tentative SSH ${i}/40, attente 10s..."
             sleep 10
           done
-          echo "Délai dépassé en attendant SSH sur ${APP_IP}:22"
+          echo "Délai dépassé en attendant SSH sur ${PUBLIC_IP}:22"
           exit 1
+
+      - name: Génération du fichier .env
+        run: |
+          echo "REACT_APP_SERVER_PORT=3000" >> .env
+          echo "REACT_APP_API_URL=http://$PUBLIC_IP:8000" >> .env
+          echo "MYSQL_DATABASE=users" >> .env
+          echo "MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}" >> .env
+          echo "REGISTRY_URL=$REGISTRY_IP:443" >> .env
+          echo "REGISTRY_USERNAME=${{ secrets.REGISTRY_USERNAME }}" >> .env
+          echo "REGISTRY_TOKEN=${{ secrets.REGISTRY_TOKEN }}" >> .env
+
+      - name: Génération de l'inventaire Ansible app
+        run: |
+          KEY_FILE=../terraform/app/private_key.pem
+          {
+            echo "[app_hosts]"
+            echo "$PUBLIC_IP ansible_user=ubuntu ansible_ssh_private_key_file=$KEY_FILE"
+          } > ansible/inventory.ini
+
+      - name: Pause avant déploiement applicatif
+        run: sleep 30
 
       - name: Déploiement de la stack applicative
         run: |
+          set -a
+          source .env
+          set +a
           cd ansible
-          EV="registry_url=${REGISTRY_URL} registry_username=${{ secrets.REGISTRY_USERNAME }} registry_password=${{ secrets.REGISTRY_PASSWORD }} react_app_server_port=${REACT_APP_SERVER_PORT} react_app_api_url=http://${APP_IP}:8000 mysql_database=${MYSQL_DATABASE} mysql_root_password=${{ secrets.MYSQL_ROOT_PASSWORD }}"
-          ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini playbook-app.yml --extra-vars "$EV"
-
-      - name: Attente démarrage app
-        run: sleep 30
+          EV="registry_url=$REGISTRY_IP:443 registry_username=$REGISTRY_USERNAME registry_password=$REGISTRY_TOKEN react_app_server_port=$REACT_APP_SERVER_PORT react_app_api_url=$REACT_APP_API_URL mysql_database=$MYSQL_DATABASE mysql_root_password=$MYSQL_ROOT_PASSWORD"
+          ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini playbook-app.yml --extra-vars "$EV" \
+            || ( sleep 30 && ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini playbook-app.yml --extra-vars "$EV" )
 
       - name: Validation frontend
-        run: curl --fail "http://${APP_IP}:3000"
+        run: |
+          for i in $(seq 1 20); do
+            if curl -s "http://$PUBLIC_IP:3000" > /dev/null; then
+              echo "Frontend OK"
+              exit 0
+            fi
+            echo "Attente frontend ${i}/20..."
+            sleep 5
+          done
+          echo "Frontend KO"
+          exit 1
 
       - name: Validation backend
-        run: curl --fail "http://${APP_IP}:8000/users"
-
-      - name: Affichage URL finale
-        run: |
-          echo "Frontend: http://${APP_IP}:3000"
-          echo "Backend:  http://${APP_IP}:8000/users"
+        run: curl -sS "http://$PUBLIC_IP:8000/users" || exit 1
