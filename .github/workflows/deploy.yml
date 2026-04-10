@@ -57,6 +57,9 @@ jobs:
           ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini playbook.yml \
             --extra-vars "registry_username=$REGISTRY_USERNAME registry_password=$REGISTRY_TOKEN"
 
+      - name: Attente du registre
+        run: sleep 20
+
       - name: Connexion, tag et push des images vers le registre
         run: |
           echo "${{ secrets.REGISTRY_TOKEN }}" | docker login "${REGISTRY_IP}:443" \
