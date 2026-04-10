@@ -41,16 +41,15 @@ jobs:
 
       - name: Configuration Docker runner pour registre auto-signé
         run: |
-          sudo tee /etc/docker/daemon.json > /dev/null <<EOF
-          {
-            "insecure-registries": ["${REGISTRY_URL}"]
-          }
-          EOF
-          sudo systemctl restart docker
-          for i in $(seq 1 15); do
-            docker info >/dev/null 2>&1 && break
-            sleep 2
-          done
+            echo "REGISTRY_URL=${REGISTRY_URL}"
+            test -n "${REGISTRY_URL}"
+
+            sudo mkdir -p /etc/docker
+            printf '{\n  "insecure-registries": ["%s"]\n}\n' "${REGISTRY_URL}" | sudo tee /etc/docker/daemon.json
+
+            sudo systemctl restart docker || (sudo systemctl status docker --no-pager && sudo journalctl -xeu docker.service --no-pager && exit 1)
+
+            docker info
 
       - name: Login registry
         run: |
