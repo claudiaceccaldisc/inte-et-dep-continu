@@ -92,6 +92,6 @@ resource "aws_instance" "registry_server" {
   }
 }
 
-output "instance_ip" {
+output "public_ip" {
   value = aws_instance.registry_server.public_ip
 }
