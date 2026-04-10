@@ -124,7 +124,7 @@ jobs:
         run: |
           sudo tee /etc/docker/daemon.json > /dev/null <<EOF
           {
-            "insecure-registries": ["${PUBLIC_IP}:443"]
+            "insecure-registries": ["${REGISTRY_IP}:443"]
           }
           EOF
           sudo systemctl restart docker
