@@ -24,7 +24,7 @@ provider "aws" {
 }
 
 variable "unique_suffix_enabled" {
-  description = "Active un suffixe aléatoire sur certains noms AWS"
+  description = "Active un suffixe aleatoire sur certains noms AWS"
   type        = bool
   default     = true
 }
@@ -65,7 +65,7 @@ resource "local_file" "ssh_key" {
 
 resource "aws_security_group" "app_sg" {
   name        = "app-sg-claudia${local.suffixe_nom}"
-  description = "Allow SSH and application access"
+  description = "Autorise SSH and application access"
 
   ingress {
     description = "SSH"
