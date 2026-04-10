@@ -1,38 +1,44 @@
 services:
   db:
-    image: mysql:9.6
+    image: mysql:8
     container_name: mysql_db
     restart: always
+    # Keep MySQL RAM usage low so the stack fits on small EC2 instances (avoids OOM / SSH loss).
+    command:
+      - --performance_schema=OFF
+      - --innodb_buffer_pool_size=128M
+      - --max_connections=80
     env_file:
       - .env
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
     volumes:
-      - db_data:/var/lib/mysql
+      - mysql_data:/var/lib/mysql
       - ./docker-mysql/sqlfiles:/docker-entrypoint-initdb.d
-    ports:
-      - "3307:3306"
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$${MYSQL_ROOT_PASSWORD} --silent || exit 1"]
       interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 20s
+      timeout: 10s
+      retries: 20
+      start_period: 90s
 
   adminer:
     image: adminer
+    container_name: adminer
     restart: always
-    ports:
-      - "8080:8080"
     depends_on:
       db:
         condition: service_healthy
+    ports:
+      - "127.0.0.1:8080:8080"
 
   api:
-    build: ./api
-    image: claudiaynov/inte-et-dep-api:latest
+    image: "{{ registry_url }}/backend:latest"
+    container_name: api
     restart: always
+    env_file:
+      - .env
     ports:
       - "8000:8000"
     environment:
@@ -51,19 +57,16 @@ services:
       start_period: 20s
 
   frontend:
-    build:
-      context: .
-      dockerfile: react.Dockerfile
-    image: claudiaynov/inte-et-dep-frontend:latest
+    image: "{{ registry_url }}/frontend:latest"
+    container_name: frontend
     restart: always
+    env_file:
+      - .env
     ports:
       - "3000:3000"
-    environment:
-      REACT_APP_SERVER_PORT: ${REACT_APP_SERVER_PORT}
-      REACT_APP_API_URL: ${REACT_APP_API_URL}
     depends_on:
       api:
         condition: service_healthy
 
 volumes:
-  db_data:
+  mysql_data:

@@ -1,0 +1,97 @@
+---
+- name: Déploiement du registre Docker privé sécurisé
+  hosts: registry_hosts
+  become: true
+
+  vars:
+    project_dir: /home/ubuntu/registry-stack
+    public_ip: "{{ ansible_host }}"
+
+  vars_files: []
+  # Les secrets seront injectés via --extra-vars ou depuis la CI
+
+  tasks:
+    - name: Mettre à jour le cache apt
+      ansible.builtin.apt:
+        update_cache: true
+
+    - name: Installer Docker et dépendances
+      ansible.builtin.apt:
+        name:
+          - docker.io
+          - docker-compose-v2
+          - apache2-utils
+          - python3-passlib
+          - openssl
+        state: present
+
+    - name: Ajouter ubuntu au groupe docker
+      ansible.builtin.user:
+        name: ubuntu
+        groups: docker
+        append: true
+
+    - name: Créer les dossiers du registre
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: "0755"
+      loop:
+        - "{{ project_dir }}"
+        - "{{ project_dir }}/auth"
+        - "{{ project_dir }}/data"
+        - "{{ project_dir }}/ssl"
+        - "{{ project_dir }}/conf"
+
+    - name: Copier openssl-san.cnf
+      ansible.builtin.template:
+        src: openssl-san.cnf
+        dest: "{{ project_dir }}/ssl/openssl-san.cnf"
+        owner: ubuntu
+        group: ubuntu
+        mode: "0644"
+
+    - name: Générer le certificat SSL auto-signé
+      ansible.builtin.command: >
+        openssl req -newkey rsa:4096 -nodes -sha256
+        -keyout {{ project_dir }}/ssl/registry.key
+        -x509 -days 365
+        -out {{ project_dir }}/ssl/registry.crt
+        -config ssl/openssl-san.cnf
+        -subj /CN={{ public_ip }}
+      args:
+        chdir: "{{ project_dir }}"
+        creates: "{{ project_dir }}/ssl/registry.crt"
+
+    - name: Créer le fichier htpasswd du registre
+      community.general.htpasswd:
+        path: "{{ project_dir }}/auth/registry.password"
+        name: "{{ registry_username }}"
+        password: "{{ registry_password }}"
+        owner: ubuntu
+        group: ubuntu
+        mode: "0640"
+        crypt_scheme: bcrypt
+
+    - name: Copier nginx.conf
+      ansible.builtin.template:
+        src: nginx.conf
+        dest: "{{ project_dir }}/conf/nginx.conf"
+        owner: ubuntu
+        group: ubuntu
+        mode: "0644"
+
+    - name: Copier le compose du registre
+      ansible.builtin.template:
+        src: docker-compose.registry.yml
+        dest: "{{ project_dir }}/docker-compose.yml"
+        owner: ubuntu
+        group: ubuntu
+        mode: "0644"
+
+    - name: Démarrer le registre
+      ansible.builtin.command: docker compose up -d
+      args:
+        chdir: "{{ project_dir }}"

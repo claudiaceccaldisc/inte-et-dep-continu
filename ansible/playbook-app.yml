@@ -1,0 +1,89 @@
+---
+- name: Déploiement de la stack applicative
+  hosts: app_hosts
+  become: true
+
+  vars:
+    project_dir: /home/ubuntu/app-stack
+    app_user: ubuntu
+
+  tasks:
+    - name: Mettre à jour le cache apt
+      ansible.builtin.apt:
+        update_cache: true
+
+    - name: Installer Docker et dépendances
+      ansible.builtin.apt:
+        name:
+          - docker.io
+          - docker-compose-v2
+          - python3-docker
+        state: present
+
+    - name: Ajouter ubuntu au groupe docker
+      ansible.builtin.user:
+        name: "{{ app_user }}"
+        groups: docker
+        append: true
+
+    - name: Créer le dossier projet
+      ansible.builtin.file:
+        path: "{{ project_dir }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: "0755"
+
+    - name: Configurer Docker pour le registre privé
+      ansible.builtin.copy:
+        dest: /etc/docker/daemon.json
+        content: "{{ {'insecure-registries': [registry_url]} | to_nice_json }}"
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Redémarrer Docker
+      ansible.builtin.service:
+        name: docker
+        state: restarted
+
+    - name: Login au registre privé
+      community.docker.docker_login:
+        registry_url: "{{ registry_url }}"
+        username: "{{ registry_username }}"
+        password: "{{ registry_password }}"
+        reauthorize: true
+
+    - name: Copier le fichier .env de prod
+      ansible.builtin.template:
+        src: app.env.j2
+        dest: "{{ project_dir }}/.env"
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: "0600"
+
+    - name: Copier le compose applicatif de prod
+      ansible.builtin.template:
+        src: docker-compose.app.yml
+        dest: "{{ project_dir }}/docker-compose.yml"
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: "0644"
+
+    - name: Copier le dossier docker-mysql
+      ansible.builtin.copy:
+        src: ../docker-mysql/
+        dest: "{{ project_dir }}/docker-mysql/"
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: "0755"
+
+    - name: Pull des images
+      ansible.builtin.command: docker compose pull
+      args:
+        chdir: "{{ project_dir }}"
+
+    - name: Démarrer la stack applicative
+      ansible.builtin.command: docker compose up -d
+      args:
+        chdir: "{{ project_dir }}"

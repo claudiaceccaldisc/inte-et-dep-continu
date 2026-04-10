@@ -35,7 +35,7 @@ resource "tls_private_key" "pk" {
 }
 
 resource "aws_key_pair" "generated_key" {
-  key_name   = "registry-key-terraform-claudia"
+  key_name   = "registry-key-terraform-claudia-${timestamp()}"
   public_key = tls_private_key.pk.public_key_openssh
 }
 
@@ -46,7 +46,7 @@ resource "local_file" "ssh_key" {
 }
 
 resource "aws_security_group" "registry_sg" {
-  name        = "registry-sg-simple-claudia"
+  name        = "registry-sg-simple-claudia-${timestamp()}"
   description = "Allow SSH, HTTP (UI), Registry (5000)"
 
   ingress {
@@ -76,7 +76,7 @@ resource "aws_security_group" "registry_sg" {
 
 resource "aws_instance" "registry_server" {
   ami                         = data.aws_ami.ubuntu.id
-  instance_type               = "t3.micro"
+  instance_type               = "t3.small"
   key_name                    = aws_key_pair.generated_key.key_name
   associate_public_ip_address = true
 
@@ -92,6 +92,6 @@ resource "aws_instance" "registry_server" {
   }
 }
 
-output "instance_ip" {
+output "public_ip" {
   value = aws_instance.registry_server.public_ip
 }
