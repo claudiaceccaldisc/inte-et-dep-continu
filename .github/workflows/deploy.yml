@@ -96,7 +96,7 @@ jobs:
 
       - name: "Génération de l'inventaire Ansible"
         run: |
-          KEY_FILE=../terraform/app/private_key.pem
+          KEY_FILE=../terraform/registry/registry-key-terraform.pem
           {
             echo "[registry_hosts]"
             echo "$REGISTRY_IP ansible_user=ubuntu ansible_ssh_private_key_file=$KEY_FILE"
