@@ -85,7 +85,7 @@ jobs:
           echo "REACT_APP_API_URL=http://$PUBLIC_IP:8000" >> .env
           echo "MYSQL_DATABASE=users" >> .env
           echo "MYSQL_ROOT_PASSWORD=ynov-CICD" >> .env
-          echo "REGISTRY_URL=$PUBLIC_IP:443" >> .env
+          echo "REGISTRY_URL=$REGISTRY_IP:443" >> .env
           echo "REGISTRY_USERNAME=${{ secrets.REGISTRY_USERNAME }}" >> .env
           echo "REGISTRY_TOKEN=${{ secrets.REGISTRY_TOKEN }}" >> .env
 
