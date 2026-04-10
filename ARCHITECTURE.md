@@ -75,7 +75,7 @@ Le workflow GitHub Actions doit exécuter séquentiellement :
 
 ## 6. État validé à ce jour
 - Registry privé opérationnel sur `35.181.151.223`
-- EC2 applicative opérationnelle sur `13.38.93.187`
+- EC2 applicative opérationnelle (IP dynamique générée par Terraform)
 - Frontend accessible publiquement
 - API accessible publiquement
 - Adminer non public
