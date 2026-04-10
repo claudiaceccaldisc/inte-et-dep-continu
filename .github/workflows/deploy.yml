@@ -33,6 +33,15 @@ jobs:
           terraform apply -auto-approve
           echo "REGISTRY_IP=$(terraform output -raw public_ip)" >> "$GITHUB_ENV"
 
+      - name: Déploiement du registre privé (Ansible)
+        run: |
+          set -a
+          source .env
+          set +a
+          cd ansible
+          ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini playbook.yml \
+            --extra-vars "registry_username=$REGISTRY_USERNAME registry_password=$REGISTRY_TOKEN"
+
       - name: Connexion, tag et push des images vers le registre
         run: |
           echo "${{ secrets.REGISTRY_TOKEN }}" | docker login "${REGISTRY_IP}:443" \
@@ -123,15 +132,6 @@ jobs:
             echo "[app_hosts]"
             echo "$PUBLIC_IP ansible_user=ubuntu ansible_ssh_private_key_file=$KEY_FILE"
           } > ansible/inventory.ini
-
-      - name: Déploiement du registre privé (Ansible)
-        run: |
-          set -a
-          source .env
-          set +a
-          cd ansible
-          ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini playbook.yml \
-            --extra-vars "registry_username=$REGISTRY_USERNAME registry_password=$REGISTRY_TOKEN"
 
       - name: Attente du démarrage du registre
         run: sleep 15
