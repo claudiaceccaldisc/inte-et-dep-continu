@@ -69,7 +69,7 @@ jobs:
               -o ConnectTimeout=10 \
               -o BatchMode=yes \
               ubuntu@"${PUBLIC_IP}" \
-              "echo ssh_ok" 2>/dev/null; then
+              "echo ssh_ok"; then
               echo "SSH prêt."
               exit 0
             fi
