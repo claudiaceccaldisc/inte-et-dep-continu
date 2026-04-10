@@ -66,7 +66,7 @@ jobs:
           AWS_DEFAULT_REGION: ${{ env.AWS_REGION }}
         run: |
           cd terraform/app
-          terraform apply -auto-approve
+          terraform apply -auto-approve -var="unique_suffix_enabled=true"
 
       - name: Récupération de l'IP publique et de la clé SSH
         run: |
