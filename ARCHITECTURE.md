@@ -23,7 +23,7 @@ L’objectif final est un déploiement “zero touch” déclenché depuis une p
 
 ## 2. EC2 Applicative
 - Rôle : héberger l’application
-- - IP publique : dynamique (exemple lors des tests : `13.38.93.187`)
+- IP publique : dynamique (exemple lors des tests : `13.38.93.187`)
 - OS : Ubuntu LTS
 - User SSH : `ubuntu`
 
