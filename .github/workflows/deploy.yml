@@ -81,10 +81,10 @@ jobs:
 
       - name: Génération du fichier .env
         run: |
-          echo "REACT_APP_SERVER_PORT=8000" >> .env
+          echo "REACT_APP_SERVER_PORT=3000" >> .env
           echo "REACT_APP_API_URL=http://$PUBLIC_IP:8000" >> .env
           echo "MYSQL_DATABASE=users" >> .env
-          echo "MYSQL_ROOT_PASSWORD=ynov-CICD" >> .env
+          echo "MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}" >> .env
           echo "REGISTRY_URL=$REGISTRY_IP:443" >> .env
           echo "REGISTRY_USERNAME=${{ secrets.REGISTRY_USERNAME }}" >> .env
           echo "REGISTRY_TOKEN=${{ secrets.REGISTRY_TOKEN }}" >> .env
@@ -154,3 +154,9 @@ jobs:
           EV="registry_url=$PUBLIC_IP:443 registry_username=$REGISTRY_USERNAME registry_password=$REGISTRY_TOKEN react_app_server_port=$REACT_APP_SERVER_PORT react_app_api_url=$REACT_APP_API_URL mysql_database=$MYSQL_DATABASE mysql_root_password=$MYSQL_ROOT_PASSWORD"
           ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini playbook-app.yml --extra-vars "$EV" \
             || ( sleep 30 && ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini playbook-app.yml --extra-vars "$EV" )
+
+      - name: Validation frontend
+        run: curl -sS "http://$PUBLIC_IP:3000" || exit 1
+
+      - name: Validation backend
+        run: curl -sS "http://$PUBLIC_IP:8000" || exit 1
